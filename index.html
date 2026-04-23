@@ -183,7 +183,7 @@
                             <li><a href="#" class="sidebar-menu-item block py-2 px-3 rounded text-sm text-gray-300 hover:bg-gray-700 transition" data-category="age" data-dim="国籍">国籍</a></li>
                             <li><a href="#" class="sidebar-menu-item block py-2 px-3 rounded text-sm text-gray-300 hover:bg-gray-700 transition" data-category="age" data-dim="職種">職種</a></li>
                             <li><a href="#" class="sidebar-menu-item block py-2 px-3 rounded text-sm text-gray-300 hover:bg-gray-700 transition" data-category="age" data-dim="雇用形態">雇用形態</a></li>
-                            <li><a href="#" class="sidebar-menu-item block py-2 px-3 rounded text-sm text-gray-300 hover:bg-gray-700 transition" data-category="age" data-dim="勤務地名1">勤務地名</a></li>
+                            <li><a href="#" class="sidebar-menu-item block py-2 px-3 rounded text-sm text-gray-300 hover:bg-gray-700 transition" data-category="age" data-dim="求人勤務地名称">勤務地名</a></li>
                             <li><a href="#" class="sidebar-menu-item block py-2 px-3 rounded text-sm text-gray-300 hover:bg-gray-700 transition" data-category="age" data-dim="勤務地都道府県">勤務地都道府県</a></li>
                             <li><a href="#" class="sidebar-menu-item block py-2 px-3 rounded text-sm text-gray-300 hover:bg-gray-700 transition" data-category="age" data-dim="仕事名KW">仕事名KW</a></li>
                             <li><a href="#" class="sidebar-menu-item block py-2 px-3 rounded text-sm text-gray-300 hover:bg-gray-700 transition" data-category="age" data-dim="仕事名フルKW">仕事名フルKW</a></li>
@@ -425,7 +425,7 @@
         // 個別のソート状態保持用オブジェクト
         let userSortSettings = {};
         const targetRatioDefaultDims = [
-            "対応状況", "国籍", "職種", "雇用形態", "勤務地名1", 
+            "対応状況", "国籍", "職種", "雇用形態", "求人勤務地名称", 
             "勤務地都道府県", "仕事名KW", "仕事名フルKW", "応募媒体", "募集背景", "求人タグ", "求人備考KW", "カスタム"
         ];
 
@@ -436,7 +436,7 @@
             {val: "国籍", label: "国籍"},
             {val: "職種", label: "職種"},
             {val: "雇用形態", label: "雇用形態"},
-            {val: "勤務地名1", label: "勤務地名"},
+            {val: "求人勤務地名称", label: "勤務地名"},
             {val: "勤務地都道府県", label: "勤務地都道府県"},
             {val: "仕事名KW", label: "仕事名KW"},
             {val: "仕事名フルKW", label: "仕事名フルKW"},
@@ -465,6 +465,40 @@
 
         // Chart.js プラグインの登録
         Chart.register(ChartDataLabels);
+
+        // --- グラデーション生成ユーティリティ ---
+        function getLinearGradient(ctx, chartArea, colorStart, colorEnd) {
+            if (!chartArea) return colorStart;
+            const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+            gradient.addColorStop(0, colorStart);
+            gradient.addColorStop(1, colorEnd);
+            return gradient;
+        }
+
+        // --- カスタムドロップシャドウプラグイン ---
+        const dropShadowPlugin = {
+            id: 'dropShadow',
+            beforeDatasetDraw: function(chart, args, options) {
+                const ctx = chart.ctx;
+                const type = args.meta.type;
+                ctx.save();
+                if (type === 'line') {
+                    ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
+                    ctx.shadowBlur = 12;
+                    ctx.shadowOffsetX = 0;
+                    ctx.shadowOffsetY = 6;
+                } else if (type === 'bar') {
+                    ctx.shadowColor = 'rgba(0, 0, 0, 0.12)';
+                    ctx.shadowBlur = 10;
+                    ctx.shadowOffsetX = 0;
+                    ctx.shadowOffsetY = 5;
+                }
+            },
+            afterDatasetDraw: function(chart) {
+                chart.ctx.restore();
+            }
+        };
+        Chart.register(dropShadowPlugin);
 
         // カスタムピボットの折りたたみ状態を切り替えるグローバル関数
         window.toggleCustomPivotCollapse = function(prefix) {
@@ -496,8 +530,8 @@
                 const btn = document.getElementById(`legend-btn-${index}`);
                 if (btn) {
                     const styles = [
-                        { on: ['bg-orange-100', 'text-orange-600', 'border-orange-300'], off: ['bg-gray-100', 'text-gray-400', 'border-gray-200'] },
-                        { on: ['bg-emerald-100', 'text-emerald-600', 'border-emerald-300'], off: ['bg-gray-100', 'text-gray-400', 'border-gray-200'] }
+                        { on: 'bg-gradient-to-r from-orange-400 to-orange-500 text-white border-transparent shadow-md'.split(' '), off: 'bg-gray-200/50 text-gray-400 border-gray-300 shadow-none'.split(' ') },
+                        { on: 'bg-gradient-to-r from-emerald-400 to-emerald-500 text-white border-transparent shadow-md'.split(' '), off: 'bg-gray-200/50 text-gray-400 border-gray-300 shadow-none'.split(' ') }
                     ][index];
 
                     if (trendAllPeriodVisibility[index]) {
@@ -516,11 +550,11 @@
                 const btn = document.getElementById(`legend-btn-${index}`);
                 if (btn) {
                     const styles = [
-                        { on: ['bg-blue-100', 'text-blue-700', 'border-blue-300'], off: ['bg-gray-100', 'text-gray-400', 'border-gray-200'] },
-                        { on: ['bg-blue-50', 'text-blue-500', 'border-blue-200'], off: ['bg-gray-100', 'text-gray-400', 'border-gray-200'] },
-                        { on: ['bg-orange-100', 'text-orange-600', 'border-orange-300'], off: ['bg-gray-100', 'text-gray-400', 'border-gray-200'] },
-                        { on: ['bg-emerald-100', 'text-emerald-600', 'border-emerald-300'], off: ['bg-gray-100', 'text-gray-400', 'border-gray-200'] },
-                        { on: ['bg-purple-100', 'text-purple-600', 'border-purple-300'], off: ['bg-gray-100', 'text-gray-400', 'border-gray-200'] }
+                        { on: 'bg-gradient-to-r from-blue-500 to-blue-600 text-white border-transparent shadow-md'.split(' '), off: 'bg-gray-200/50 text-gray-400 border-gray-300 shadow-none'.split(' ') },
+                        { on: 'bg-gradient-to-r from-blue-300 to-blue-400 text-white border-transparent shadow-md'.split(' '), off: 'bg-gray-200/50 text-gray-400 border-gray-300 shadow-none'.split(' ') },
+                        { on: 'bg-gradient-to-r from-orange-400 to-orange-500 text-white border-transparent shadow-md'.split(' '), off: 'bg-gray-200/50 text-gray-400 border-gray-300 shadow-none'.split(' ') },
+                        { on: 'bg-gradient-to-r from-emerald-400 to-emerald-500 text-white border-transparent shadow-md'.split(' '), off: 'bg-gray-200/50 text-gray-400 border-gray-300 shadow-none'.split(' ') },
+                        { on: 'bg-gradient-to-r from-purple-400 to-purple-500 text-white border-transparent shadow-md'.split(' '), off: 'bg-gray-200/50 text-gray-400 border-gray-300 shadow-none'.split(' ') }
                     ][index];
 
                     if (trendDatasetVisibility[index]) {
@@ -1156,7 +1190,8 @@
             if (label === "(突合求人なし)") return 999999999; 
             if (label === "対象外の給与区分") return 999999998;
             if (label === "(タグなし)") return 999999997; 
-            if (label === "(空欄/不明)" || label === "(空欄)") return 999999996; 
+            if (label === "(該当なし)") return 999999996; 
+            if (label === "(空欄/不明)" || label === "(空欄)") return 999999995; 
             
             const plainLabel = String(label).replace(/<[^>]+>/g, '').replace(/,/g, '');
             const match = plainLabel.match(/^(\d+)[〜～]/);
@@ -1188,7 +1223,10 @@
                 const tags = valStr.split("、").map(t => t.trim()).filter(t => t);
                 return tags.length > 0 ? tags : ["(タグなし)"];
             } else {
-                if (val === "" || val === undefined || val === null) return "(空欄)";
+                if (val === "" || val === undefined || val === null) {
+                    if (dim === "仕事名KW" || dim === "仕事名フルKW") return "(該当なし)";
+                    return "(空欄)";
+                }
                 
                 if (dim === "TOP画像") {
                     if (Number(val) === 1) return "画像あり";
@@ -1516,32 +1554,35 @@
             document.getElementById('dashboardDataCount').textContent = (beforeTotal + afterTotal).toLocaleString();
 
             let html = `
-                <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 w-full min-w-full">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-xl font-bold text-gray-800 flex items-center">
-                            <span class="w-1.5 h-6 bg-blue-600 inline-block mr-2 rounded"></span>
+                <div class="bg-white/80 backdrop-blur-2xl p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white/60 w-full min-w-full relative overflow-hidden">
+                    <div class="absolute -top-20 -right-20 w-64 h-64 bg-blue-400/20 rounded-full blur-3xl pointer-events-none"></div>
+                    <div class="absolute -bottom-20 -left-20 w-64 h-64 bg-orange-400/20 rounded-full blur-3xl pointer-events-none"></div>
+                    
+                    <div class="flex items-center justify-between mb-6 relative z-10">
+                        <h3 class="text-2xl font-extrabold text-gray-800 flex items-center tracking-tight">
+                            <span class="w-1.5 h-7 bg-gradient-to-b from-blue-400 to-blue-600 inline-block mr-3 rounded-full shadow-sm"></span>
                             ビフォー vs アフター
                         </h3>
-                        <div class="flex space-x-6 text-sm font-bold bg-gray-50 p-3 rounded-lg border border-gray-200 shadow-inner">
-                            <div class="text-gray-600 flex flex-col items-center">
+                        <div class="flex space-x-6 text-sm font-bold bg-white/70 p-3 rounded-xl border border-gray-100 shadow-sm backdrop-blur-md">
+                            <div class="text-gray-600 flex flex-col items-center px-2">
                                 <span>ビフォー (${spanDays}日間)</span>
-                                <span class="text-xl text-blue-600">${beforeTotal.toLocaleString()} <span class="text-sm font-medium">件</span></span>
-                                <span class="text-xs text-gray-400">平均 ${beforeAvg.toFixed(1)}件/日</span>
+                                <span class="text-2xl text-blue-600 drop-shadow-sm">${beforeTotal.toLocaleString()} <span class="text-sm font-medium">件</span></span>
+                                <span class="text-xs text-gray-500 font-medium bg-gray-100/80 px-2 py-0.5 rounded-md mt-1">平均 ${beforeAvg.toFixed(1)}件/日</span>
                             </div>
-                            <div class="w-px bg-gray-300"></div>
-                            <div class="text-gray-600 flex flex-col items-center">
+                            <div class="w-px bg-gray-200"></div>
+                            <div class="text-gray-600 flex flex-col items-center px-2">
                                 <span>アフター (${spanDays}日間)</span>
-                                <span class="text-xl text-orange-600">${afterTotal.toLocaleString()} <span class="text-sm font-medium">件</span></span>
-                                <span class="text-xs text-gray-400">平均 ${afterAvg.toFixed(1)}件/日</span>
+                                <span class="text-2xl text-orange-600 drop-shadow-sm">${afterTotal.toLocaleString()} <span class="text-sm font-medium">件</span></span>
+                                <span class="text-xs text-gray-500 font-medium bg-gray-100/80 px-2 py-0.5 rounded-md mt-1">平均 ${afterAvg.toFixed(1)}件/日</span>
                             </div>
-                            <div class="w-px bg-gray-300"></div>
-                            <div class="text-gray-600 flex flex-col items-center justify-center">
+                            <div class="w-px bg-gray-200"></div>
+                            <div class="text-gray-600 flex flex-col items-center justify-center pl-2 pr-4">
                                 <span>差分</span>
-                                <span class="text-2xl ${(afterTotal - beforeTotal) >= 0 ? 'text-emerald-600' : 'text-red-600'}">${(afterTotal - beforeTotal) > 0 ? '+' : ''}${(afterTotal - beforeTotal).toLocaleString()} <span class="text-sm font-medium">件</span></span>
+                                <span class="text-3xl ${(afterTotal - beforeTotal) >= 0 ? 'text-emerald-500' : 'text-red-500'} drop-shadow-sm">${(afterTotal - beforeTotal) > 0 ? '+' : ''}${(afterTotal - beforeTotal).toLocaleString()} <span class="text-base font-medium">件</span></span>
                             </div>
                         </div>
                     </div>
-                    <div style="position: relative; height: 500px; width: 100%;">
+                    <div style="position: relative; height: 450px; width: 100%;" class="relative z-10">
                         <canvas id="baCanvas"></canvas>
                     </div>
                 </div>
@@ -1562,9 +1603,16 @@
                         {
                             label: '日別応募数',
                             data: dataBar,
-                            backgroundColor: dataBar.map((_, i) => i < spanDays ? 'rgba(147, 197, 253, 0.85)' : 'rgba(253, 186, 116, 0.85)'), // blue-300 : orange-300
-                            hoverBackgroundColor: dataBar.map((_, i) => i < spanDays ? '#60a5fa' : '#fb923c'),
-                            borderRadius: 4,
+                            backgroundColor: function(context) {
+                                const chart = context.chart;
+                                const {ctx, chartArea} = chart;
+                                if (!chartArea) return null;
+                                const isBefore = context.dataIndex < spanDays;
+                                return isBefore 
+                                    ? getLinearGradient(ctx, chartArea, 'rgba(96, 165, 250, 0.95)', 'rgba(37, 99, 235, 0.95)') // blue
+                                    : getLinearGradient(ctx, chartArea, 'rgba(251, 146, 60, 0.95)', 'rgba(234, 88, 12, 0.95)'); // orange
+                            },
+                            borderRadius: 6,
                             borderSkipped: false,
                             order: 3,
                             datalabels: {
@@ -1574,7 +1622,9 @@
                                 align: 'top',
                                 anchor: 'end',
                                 color: '#4b5563',
-                                font: { weight: 'bold', size: 11 },
+                                textStrokeColor: 'rgba(255, 255, 255, 0.9)',
+                                textStrokeWidth: 4,
+                                font: { weight: 'bold', size: 10 },
                                 formatter: Math.round,
                                 offset: 4
                             }
@@ -1583,10 +1633,15 @@
                             label: 'ビフォー平均',
                             data: dataBeforeAvg,
                             type: 'line',
-                            borderColor: '#2563eb', // blue-600
-                            backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                            borderWidth: 2,
-                            borderDash: [5, 5],
+                            borderColor: '#3b82f6', // blue-500
+                            backgroundColor: function(context) {
+                                const chart = context.chart;
+                                const {ctx, chartArea} = chart;
+                                if (!chartArea) return null;
+                                return getLinearGradient(ctx, chartArea, 'rgba(59, 130, 246, 0.25)', 'rgba(59, 130, 246, 0.0)');
+                            },
+                            borderWidth: 2.5,
+                            borderDash: [6, 4],
                             pointRadius: 0,
                             fill: true,
                             tension: 0.4,
@@ -1598,10 +1653,15 @@
                             label: 'アフター平均',
                             data: dataAfterAvg,
                             type: 'line',
-                            borderColor: '#ea580c', // orange-600
-                            backgroundColor: 'rgba(234, 88, 12, 0.1)',
-                            borderWidth: 2,
-                            borderDash: [5, 5],
+                            borderColor: '#f97316', // orange-500
+                            backgroundColor: function(context) {
+                                const chart = context.chart;
+                                const {ctx, chartArea} = chart;
+                                if (!chartArea) return null;
+                                return getLinearGradient(ctx, chartArea, 'rgba(249, 115, 22, 0.25)', 'rgba(249, 115, 22, 0.0)');
+                            },
+                            borderWidth: 2.5,
+                            borderDash: [6, 4],
                             pointRadius: 0,
                             fill: true,
                             tension: 0.4,
@@ -1615,7 +1675,7 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     layout: {
-                        padding: { top: 30 }
+                        padding: { top: 40 }
                     },
                     interaction: {
                         mode: 'index',
@@ -1627,21 +1687,23 @@
                                 display: false,
                                 drawBorder: false
                             },
-                            ticks: { color: '#6b7280' }
+                            ticks: { color: '#6b7280', font: { family: "'Inter', sans-serif" } }
                         },
                         y: {
                             beginAtZero: true,
+                            grace: '15%', // 追加: グラフ上部に15%の余裕を持たせる
                             grid: {
-                                color: '#f3f4f6',
-                                borderDash: [5, 5],
+                                color: '#e5e7eb',
+                                borderDash: [4, 4],
                                 drawBorder: false
                             },
                             title: {
                                 display: true,
                                 text: '応募数',
-                                color: '#9ca3af'
+                                color: '#9ca3af',
+                                font: { weight: 'bold' }
                             },
-                            ticks: { color: '#6b7280' }
+                            ticks: { color: '#6b7280', font: { family: "'Inter', sans-serif" } }
                         }
                     },
                     plugins: {
@@ -1649,12 +1711,14 @@
                             display: false 
                         },
                         tooltip: {
-                            backgroundColor: 'rgba(17, 24, 39, 0.9)',
+                            backgroundColor: 'rgba(17, 24, 39, 0.85)',
                             titleColor: '#f9fafb',
                             bodyColor: '#f9fafb',
-                            padding: 12,
-                            cornerRadius: 8,
+                            padding: 14,
+                            cornerRadius: 12,
                             usePointStyle: true,
+                            borderColor: 'rgba(255,255,255,0.1)',
+                            borderWidth: 1,
                             callbacks: {
                                 label: function(context) {
                                     let label = context.dataset.label || '';
@@ -1775,15 +1839,15 @@
                 titleText = `応募トレンド (集計全期間: ${totalDays}日間)`;
 
                 const btnClassesAll = [
-                    trendAllPeriodVisibility[0] ? 'bg-orange-100 text-orange-600 border-orange-300' : 'bg-gray-100 text-gray-400 border-gray-200',
-                    trendAllPeriodVisibility[1] ? 'bg-emerald-100 text-emerald-600 border-emerald-300' : 'bg-gray-100 text-gray-400 border-gray-200'
+                    trendAllPeriodVisibility[0] ? 'bg-gradient-to-r from-orange-400 to-orange-500 text-white border-transparent shadow-md' : 'bg-gray-200/50 text-gray-400 border-gray-300 shadow-none',
+                    trendAllPeriodVisibility[1] ? 'bg-gradient-to-r from-emerald-400 to-emerald-500 text-white border-transparent shadow-md' : 'bg-gray-200/50 text-gray-400 border-gray-300 shadow-none'
                 ];
 
                 legendHtml = `
-                    <button onclick="window.toggleTrendDataset(0)" id="legend-btn-0" class="px-4 py-1.5 rounded-full text-sm font-bold border transition-colors focus:outline-none shadow-sm flex items-baseline gap-1 ${btnClassesAll[0]}">
+                    <button onclick="window.toggleTrendDataset(0)" id="legend-btn-0" class="px-5 py-2 rounded-full text-sm font-bold border transition-all focus:outline-none flex items-baseline gap-1 ${btnClassesAll[0]} hover:-translate-y-0.5">
                         <span>短期移動平均 (${shortSpan}日)</span>
                     </button>
-                    <button onclick="window.toggleTrendDataset(1)" id="legend-btn-1" class="px-4 py-1.5 rounded-full text-sm font-bold border transition-colors focus:outline-none shadow-sm flex items-baseline gap-1 ${btnClassesAll[1]}">
+                    <button onclick="window.toggleTrendDataset(1)" id="legend-btn-1" class="px-5 py-2 rounded-full text-sm font-bold border transition-all focus:outline-none flex items-baseline gap-1 ${btnClassesAll[1]} hover:-translate-y-0.5">
                         <span>長期移動平均 (${longSpan}日)</span>
                     </button>
                 `;
@@ -1792,8 +1856,12 @@
                     {
                         label: '日別応募数',
                         data: dailyCountsAll,
-                        backgroundColor: 'rgba(147, 197, 253, 0.85)', // blue-300
-                        hoverBackgroundColor: '#93c5fd',
+                        backgroundColor: function(context) {
+                            const chart = context.chart;
+                            const {ctx, chartArea} = chart;
+                            if (!chartArea) return null;
+                            return getLinearGradient(ctx, chartArea, 'rgba(147, 197, 253, 0.9)', 'rgba(59, 130, 246, 0.9)'); // blue-300 to blue-500
+                        },
                         borderRadius: 4,
                         borderSkipped: false,
                         order: 3,
@@ -1807,11 +1875,11 @@
                         type: 'line',
                         borderColor: '#f97316', // orange-500
                         backgroundColor: '#f97316',
-                        borderWidth: 2.5, 
+                        borderWidth: 3, 
                         pointBackgroundColor: '#ffffff',
                         pointBorderWidth: 2,
                         pointRadius: 0, 
-                        pointHoverRadius: 5,
+                        pointHoverRadius: 6,
                         fill: false, 
                         tension: 0.4,
                         order: 1,
@@ -1824,11 +1892,11 @@
                         type: 'line',
                         borderColor: '#10b981', // emerald-500
                         backgroundColor: '#10b981',
-                        borderWidth: 2.5, 
+                        borderWidth: 3, 
                         pointBackgroundColor: '#ffffff',
                         pointBorderWidth: 2,
                         pointRadius: 0, 
-                        pointHoverRadius: 5,
+                        pointHoverRadius: 6,
                         fill: false, 
                         tension: 0.4,
                         order: 2,
@@ -1978,28 +2046,28 @@
                 titleText = `応募トレンド (${tY}年${tM + 1}月)`;
 
                 const btnClasses = [
-                    trendDatasetVisibility[0] ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-gray-100 text-gray-400 border-gray-200',
-                    trendDatasetVisibility[1] ? 'bg-blue-50 text-blue-500 border-blue-200' : 'bg-gray-100 text-gray-400 border-gray-200',
-                    trendDatasetVisibility[2] ? 'bg-orange-100 text-orange-600 border-orange-300' : 'bg-gray-100 text-gray-400 border-gray-200',
-                    trendDatasetVisibility[3] ? 'bg-emerald-100 text-emerald-600 border-emerald-300' : 'bg-gray-100 text-gray-400 border-gray-200',
-                    trendDatasetVisibility[4] ? 'bg-purple-100 text-purple-600 border-purple-300' : 'bg-gray-100 text-gray-400 border-gray-200'
+                    trendDatasetVisibility[0] ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white border-transparent shadow-md' : 'bg-gray-200/50 text-gray-400 border-gray-300 shadow-none',
+                    trendDatasetVisibility[1] ? 'bg-gradient-to-r from-blue-300 to-blue-400 text-white border-transparent shadow-md' : 'bg-gray-200/50 text-gray-400 border-gray-300 shadow-none',
+                    trendDatasetVisibility[2] ? 'bg-gradient-to-r from-orange-400 to-orange-500 text-white border-transparent shadow-md' : 'bg-gray-200/50 text-gray-400 border-gray-300 shadow-none',
+                    trendDatasetVisibility[3] ? 'bg-gradient-to-r from-emerald-400 to-emerald-500 text-white border-transparent shadow-md' : 'bg-gray-200/50 text-gray-400 border-gray-300 shadow-none',
+                    trendDatasetVisibility[4] ? 'bg-gradient-to-r from-purple-400 to-purple-500 text-white border-transparent shadow-md' : 'bg-gray-200/50 text-gray-400 border-gray-300 shadow-none'
                 ];
 
                 legendHtml = `
-                    <button onclick="window.toggleTrendDataset(0)" id="legend-btn-0" class="px-4 py-1.5 rounded-full text-sm font-bold border transition-colors focus:outline-none shadow-sm flex items-baseline gap-1 ${btnClasses[0]}">
-                        <span>当月実績</span><span class="text-xs font-medium opacity-80">(${sumM0.toLocaleString()}件)</span>
+                    <button onclick="window.toggleTrendDataset(0)" id="legend-btn-0" class="px-5 py-2 rounded-full text-sm font-bold border transition-all focus:outline-none flex items-baseline gap-1.5 ${btnClasses[0]} hover:-translate-y-0.5">
+                        <span>当月実績</span><span class="text-xs font-medium opacity-90 drop-shadow-sm">(${sumM0.toLocaleString()}件)</span>
                     </button>
-                    <button onclick="window.toggleTrendDataset(1)" id="legend-btn-1" class="px-4 py-1.5 rounded-full text-sm font-bold border transition-colors focus:outline-none shadow-sm flex items-baseline gap-1 ${btnClasses[1]}">
-                        <span>当月予測</span><span class="text-xs font-medium opacity-80">(${predictTotal.toLocaleString()}件)</span>
+                    <button onclick="window.toggleTrendDataset(1)" id="legend-btn-1" class="px-5 py-2 rounded-full text-sm font-bold border transition-all focus:outline-none flex items-baseline gap-1.5 ${btnClasses[1]} hover:-translate-y-0.5">
+                        <span>当月予測</span><span class="text-xs font-medium opacity-90 drop-shadow-sm">(${predictTotal.toLocaleString()}件)</span>
                     </button>
-                    <button onclick="window.toggleTrendDataset(2)" id="legend-btn-2" class="px-4 py-1.5 rounded-full text-sm font-bold border transition-colors focus:outline-none shadow-sm flex items-baseline gap-1 ${btnClasses[2]}">
-                        <span>先月</span><span class="text-xs font-medium opacity-80">(${sumM1.toLocaleString()}件)</span>
+                    <button onclick="window.toggleTrendDataset(2)" id="legend-btn-2" class="px-5 py-2 rounded-full text-sm font-bold border transition-all focus:outline-none flex items-baseline gap-1.5 ${btnClasses[2]} hover:-translate-y-0.5">
+                        <span>先月</span><span class="text-xs font-medium opacity-90 drop-shadow-sm">(${sumM1.toLocaleString()}件)</span>
                     </button>
-                    <button onclick="window.toggleTrendDataset(3)" id="legend-btn-3" class="px-4 py-1.5 rounded-full text-sm font-bold border transition-colors focus:outline-none shadow-sm flex items-baseline gap-1 ${btnClasses[3]}">
-                        <span>先々月</span><span class="text-xs font-medium opacity-80">(${sumM2.toLocaleString()}件)</span>
+                    <button onclick="window.toggleTrendDataset(3)" id="legend-btn-3" class="px-5 py-2 rounded-full text-sm font-bold border transition-all focus:outline-none flex items-baseline gap-1.5 ${btnClasses[3]} hover:-translate-y-0.5">
+                        <span>先々月</span><span class="text-xs font-medium opacity-90 drop-shadow-sm">(${sumM2.toLocaleString()}件)</span>
                     </button>
-                    <button onclick="window.toggleTrendDataset(4)" id="legend-btn-4" class="px-4 py-1.5 rounded-full text-sm font-bold border transition-colors focus:outline-none shadow-sm flex items-baseline gap-1 ${btnClasses[4]}">
-                        <span>昨年同月</span><span class="text-xs font-medium opacity-80">(${sumM12.toLocaleString()}件)</span>
+                    <button onclick="window.toggleTrendDataset(4)" id="legend-btn-4" class="px-5 py-2 rounded-full text-sm font-bold border transition-all focus:outline-none flex items-baseline gap-1.5 ${btnClasses[4]} hover:-translate-y-0.5">
+                        <span>昨年同月</span><span class="text-xs font-medium opacity-90 drop-shadow-sm">(${sumM12.toLocaleString()}件)</span>
                     </button>
                 `;
 
@@ -2007,38 +2075,52 @@
                     {
                         label: '当月実績',
                         data: dataM0_actual,
-                        backgroundColor: 'rgba(37, 99, 235, 0.85)', // blue-600
-                        hoverBackgroundColor: '#2563eb',
-                        borderRadius: 4,
+                        backgroundColor: function(context) {
+                            const chart = context.chart;
+                            const {ctx, chartArea} = chart;
+                            if (!chartArea) return null;
+                            return getLinearGradient(ctx, chartArea, 'rgba(59, 130, 246, 0.95)', 'rgba(29, 78, 216, 0.95)'); // blue-500 to blue-700
+                        },
+                        borderRadius: 6,
                         borderSkipped: false,
                         order: 5,
                         hidden: !trendDatasetVisibility[0],
                         datalabels: {
                             display: function(context) { return context.dataset.data[context.dataIndex] > 0; },
-                            align: 'top', anchor: 'end', color: '#1e3a8a', font: { weight: 'bold', size: 10 }, formatter: Math.round, offset: 4
+                            align: 'top', anchor: 'end', color: '#1e3a8a',
+                            textStrokeColor: 'rgba(255, 255, 255, 0.9)',
+                            textStrokeWidth: 4,
+                            font: { weight: 'bold', size: 10 }, formatter: Math.round, offset: 4
                         }
                     },
                     {
                         label: '当月予測',
                         data: dataM0_predict,
-                        backgroundColor: 'rgba(191, 219, 254, 0.85)', // blue-200
-                        hoverBackgroundColor: '#93c5fd',
-                        borderRadius: 4,
+                        backgroundColor: function(context) {
+                            const chart = context.chart;
+                            const {ctx, chartArea} = chart;
+                            if (!chartArea) return null;
+                            return getLinearGradient(ctx, chartArea, 'rgba(191, 219, 254, 0.9)', 'rgba(147, 197, 253, 0.9)'); // blue-200 to blue-300
+                        },
+                        borderRadius: 6,
                         borderSkipped: false,
                         order: 5,
                         hidden: !trendDatasetVisibility[1],
                         datalabels: {
                             display: function(context) { return context.dataset.data[context.dataIndex] > 0; },
-                            align: 'top', anchor: 'end', color: '#3b82f6', font: { weight: 'bold', size: 10 }, formatter: Math.round, offset: 4
+                            align: 'top', anchor: 'end', color: '#3b82f6', 
+                            textStrokeColor: 'rgba(255, 255, 255, 0.9)',
+                            textStrokeWidth: 4,
+                            font: { weight: 'bold', size: 10 }, formatter: Math.round, offset: 4
                         }
                     },
                     {
                         label: '先月',
                         data: dataM1,
                         type: 'line',
-                        borderColor: '#f59e0b', // orange-500
-                        backgroundColor: '#f59e0b',
-                        borderWidth: 2.5, 
+                        borderColor: '#f97316', // orange-500
+                        backgroundColor: '#f97316',
+                        borderWidth: 3, 
                         pointBackgroundColor: '#ffffff',
                         pointBorderWidth: 2,
                         pointRadius: 3, 
@@ -2055,7 +2137,7 @@
                         type: 'line',
                         borderColor: '#10b981', // emerald-500
                         backgroundColor: '#10b981',
-                        borderWidth: 2.5, 
+                        borderWidth: 3, 
                         pointBackgroundColor: '#ffffff',
                         pointBorderWidth: 2,
                         pointRadius: 3, 
@@ -2072,7 +2154,7 @@
                         type: 'line',
                         borderColor: '#8b5cf6', // purple-500
                         backgroundColor: '#8b5cf6',
-                        borderWidth: 2.5, 
+                        borderWidth: 3, 
                         pointBackgroundColor: '#ffffff',
                         pointBorderWidth: 2,
                         pointRadius: 3, 
@@ -2087,25 +2169,28 @@
             } // end if (isAllPeriod)
 
             let html = `
-                <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 w-full min-w-full">
-                    <div class="flex flex-col mb-4">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-xl font-bold text-gray-800 flex items-center">
-                                <span class="w-1.5 h-6 bg-blue-600 inline-block mr-2 rounded"></span>
+                <div class="bg-white/80 backdrop-blur-2xl p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white/60 w-full min-w-full relative overflow-hidden">
+                    <div class="absolute -top-20 -right-20 w-64 h-64 bg-blue-400/20 rounded-full blur-3xl pointer-events-none"></div>
+                    <div class="absolute -bottom-20 -left-20 w-64 h-64 bg-emerald-400/20 rounded-full blur-3xl pointer-events-none"></div>
+                    
+                    <div class="flex flex-col mb-4 relative z-10">
+                        <div class="flex items-center justify-between mb-5">
+                            <h3 class="text-2xl font-extrabold text-gray-800 flex items-center tracking-tight">
+                                <span class="w-1.5 h-7 bg-gradient-to-b from-blue-400 to-blue-600 inline-block mr-3 rounded-full shadow-sm"></span>
                                 ${titleText}
                             </h3>
-                            <div class="flex items-center space-x-4 bg-gray-100 p-1.5 rounded-lg border border-gray-200">
+                            <div class="flex items-center space-x-2 bg-white/60 backdrop-blur-md p-1.5 rounded-xl border border-gray-100 shadow-sm">
                                 <label class="flex items-center cursor-pointer">
                                     <input type="radio" name="trendMode" value="daily" class="hidden peer" ${trendMode === 'daily' ? 'checked' : ''} onchange="window.changeTrendMode('daily');">
-                                    <span class="px-4 py-1.5 text-sm font-semibold rounded-md text-gray-500 peer-checked:bg-white peer-checked:text-blue-600 peer-checked:shadow-sm transition-all">単月日別</span>
+                                    <span class="px-5 py-2 text-sm font-bold rounded-lg text-gray-500 peer-checked:bg-white peer-checked:text-blue-600 peer-checked:shadow-md transition-all">単月日別</span>
                                 </label>
                                 <label class="flex items-center cursor-pointer">
                                     <input type="radio" name="trendMode" value="cumulative" class="hidden peer" ${trendMode === 'cumulative' ? 'checked' : ''} onchange="window.changeTrendMode('cumulative');">
-                                    <span class="px-4 py-1.5 text-sm font-semibold rounded-md text-gray-500 peer-checked:bg-white peer-checked:text-blue-600 peer-checked:shadow-sm transition-all">単月累積</span>
+                                    <span class="px-5 py-2 text-sm font-bold rounded-lg text-gray-500 peer-checked:bg-white peer-checked:text-blue-600 peer-checked:shadow-md transition-all">単月累積</span>
                                 </label>
                                 <label class="flex items-center cursor-pointer">
                                     <input type="radio" name="trendMode" value="all_period" class="hidden peer" ${trendMode === 'all_period' ? 'checked' : ''} onchange="window.changeTrendMode('all_period');">
-                                    <span class="px-4 py-1.5 text-sm font-semibold rounded-md text-gray-500 peer-checked:bg-white peer-checked:text-blue-600 peer-checked:shadow-sm transition-all">集計全期間</span>
+                                    <span class="px-5 py-2 text-sm font-bold rounded-lg text-gray-500 peer-checked:bg-white peer-checked:text-blue-600 peer-checked:shadow-md transition-all">集計全期間</span>
                                 </label>
                             </div>
                         </div>
@@ -2115,7 +2200,7 @@
                             ${legendHtml}
                         </div>
                     </div>
-                    <div style="position: relative; height: 500px; width: 100%;">
+                    <div style="position: relative; height: 450px; width: 100%;" class="relative z-10">
                         <canvas id="trendCanvas"></canvas>
                     </div>
                 </div>
@@ -2138,7 +2223,7 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     layout: {
-                        padding: { top: 30 }
+                        padding: { top: 40 }
                     },
                     interaction: {
                         mode: 'index',
@@ -2148,17 +2233,19 @@
                         x: {
                             stacked: true, 
                             grid: { display: false, drawBorder: false },
-                            ticks: { color: '#6b7280' }
+                            ticks: { color: '#6b7280', font: { family: "'Inter', sans-serif" } }
                         },
                         y: {
                             beginAtZero: true,
-                            grid: { color: '#f3f4f6', borderDash: [5, 5], drawBorder: false },
+                            grace: '15%', // 追加: グラフ上部に15%の余裕を持たせる
+                            grid: { color: '#e5e7eb', borderDash: [4, 4], drawBorder: false },
                             title: {
                                 display: true,
                                 text: '応募数',
-                                color: '#9ca3af'
+                                color: '#9ca3af',
+                                font: { weight: 'bold' }
                             },
-                            ticks: { color: '#6b7280' }
+                            ticks: { color: '#6b7280', font: { family: "'Inter', sans-serif" } }
                         }
                     },
                     plugins: {
@@ -2166,12 +2253,14 @@
                             display: false // 標準凡例を非表示
                         },
                         tooltip: {
-                            backgroundColor: 'rgba(17, 24, 39, 0.9)',
+                            backgroundColor: 'rgba(17, 24, 39, 0.85)',
                             titleColor: '#f9fafb',
                             bodyColor: '#f9fafb',
-                            padding: 12,
-                            cornerRadius: 8,
+                            padding: 14,
+                            cornerRadius: 12,
                             usePointStyle: true,
+                            borderColor: 'rgba(255,255,255,0.1)',
+                            borderWidth: 1,
                             callbacks: {
                                 label: function(context) {
                                     let label = context.dataset.label || '';
@@ -2220,14 +2309,16 @@
                 // グラフ用のコンテナ生成
                 allChartHtml += `
                     <div id="chart-section-${result.chartData.dimId}" class="pivot-section scroll-mt-6">
-                        <div class="flex items-center justify-between mb-2">
-                            <h3 class="text-xl font-bold text-gray-800 flex items-center">
-                                <span class="w-1.5 h-6 bg-purple-500 inline-block mr-2 rounded"></span>
+                        <div class="flex items-center justify-between mb-4 pl-1">
+                            <h3 class="text-2xl font-extrabold text-gray-800 flex items-center tracking-tight">
+                                <span class="w-1.5 h-7 bg-gradient-to-b from-purple-400 to-purple-600 inline-block mr-3 rounded-full shadow-sm"></span>
                                 ${result.chartData.dimLabel}
                             </h3>
                         </div>
-                        <div class="bg-white p-4 rounded shadow-sm border border-gray-300">
-                            <div style="position: relative; height: 350px; width: 100%;">
+                        <div class="bg-white/80 backdrop-blur-2xl p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white/60 relative overflow-hidden">
+                            <div class="absolute -top-20 -right-20 w-64 h-64 bg-purple-400/20 rounded-full blur-3xl pointer-events-none"></div>
+                            <div class="absolute -bottom-20 -left-20 w-64 h-64 bg-green-400/10 rounded-full blur-3xl pointer-events-none"></div>
+                            <div style="position: relative; height: 380px; width: 100%;" class="relative z-10">
                                 <canvas id="canvas-${result.chartData.dimId}"></canvas>
                             </div>
                         </div>
@@ -2249,6 +2340,16 @@
             }
 
             attachTableEvents();
+
+            // 現在のモード（表・グラフ）に合わせて表示を復元
+            const isChartMode = document.getElementById('toggleChart').classList.contains('bg-white');
+            if (isChartMode) {
+                document.getElementById('chartArea').classList.remove('hidden');
+                document.getElementById('pivotArea').classList.add('hidden');
+            } else {
+                document.getElementById('pivotArea').classList.remove('hidden');
+                document.getElementById('chartArea').classList.add('hidden');
+            }
         }
 
         // グラフを描画する関数
@@ -2275,13 +2376,18 @@
                                 data: data.ratios,
                                 type: 'line',
                                 borderColor: '#f97316', // orange-500
-                                backgroundColor: '#f97316',
+                                backgroundColor: function(context) {
+                                    const chart = context.chart;
+                                    const {ctx, chartArea} = chart;
+                                    if (!chartArea) return null;
+                                    return getLinearGradient(ctx, chartArea, 'rgba(249, 115, 22, 0.25)', 'rgba(249, 115, 22, 0.0)');
+                                },
                                 borderWidth: 3,
                                 pointBackgroundColor: '#ffffff',
                                 pointBorderWidth: 2,
                                 pointRadius: 4,
                                 pointHoverRadius: 6,
-                                fill: false,
+                                fill: true, // 光彩(影)のために塗りつぶし
                                 yAxisID: 'y-ratio',
                                 tension: 0.4,
                                 order: 1,
@@ -2290,27 +2396,26 @@
                                     align: 'top',
                                     anchor: 'center',
                                     offset: 8,
-                                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                                    borderColor: '#f97316',
-                                    borderWidth: 1,
-                                    borderRadius: 4,
-                                    padding: 4,
+                                    textStrokeColor: 'rgba(255, 255, 255, 0.9)',
+                                    textStrokeWidth: 4,
                                     formatter: function(value) {
                                         return value.toFixed(1) + '%';
                                     },
                                     color: '#ea580c',
-                                    font: {
-                                        weight: 'bold',
-                                        size: 11
-                                    }
+                                    font: { weight: 'bold', size: 11, family: "'Inter', sans-serif" }
                                 }
                             },
                             {
                                 label: `${targetLabel} 応募数`,
                                 data: data.targetCounts,
-                                backgroundColor: 'rgba(34, 197, 94, 0.85)', // green-500
+                                backgroundColor: function(context) {
+                                    const chart = context.chart;
+                                    const {ctx, chartArea} = chart;
+                                    if (!chartArea) return null;
+                                    return getLinearGradient(ctx, chartArea, 'rgba(74, 222, 128, 0.9)', 'rgba(22, 163, 74, 0.9)'); // green-400 to green-600
+                                },
                                 hoverBackgroundColor: '#22c55e',
-                                borderRadius: 4,
+                                borderRadius: 6,
                                 borderSkipped: false,
                                 yAxisID: 'y-count',
                                 order: 2,
@@ -2319,9 +2424,14 @@
                             {
                                 label: 'ターゲット外応募数',
                                 data: data.otherCounts,
-                                backgroundColor: 'rgba(229, 231, 235, 0.85)', // gray-200
+                                backgroundColor: function(context) {
+                                    const chart = context.chart;
+                                    const {ctx, chartArea} = chart;
+                                    if (!chartArea) return null;
+                                    return getLinearGradient(ctx, chartArea, 'rgba(229, 231, 235, 0.9)', 'rgba(156, 163, 175, 0.9)'); // gray-200 to gray-400
+                                },
                                 hoverBackgroundColor: '#d1d5db',
-                                borderRadius: 4,
+                                borderRadius: 6,
                                 borderSkipped: false,
                                 yAxisID: 'y-count',
                                 order: 3,
@@ -2334,7 +2444,7 @@
                         maintainAspectRatio: false,
                         layout: {
                             padding: {
-                                top: 40 // データラベルが上にはみ出さないよう余白を追加
+                                top: 50 
                             }
                         },
                         interaction: {
@@ -2349,7 +2459,8 @@
                                     maxRotation: 45,
                                     minRotation: 0,
                                     autoSkip: false,
-                                    color: '#6b7280'
+                                    color: '#6b7280',
+                                    font: { family: "'Inter', sans-serif" }
                                 }
                             },
                             'y-count': {
@@ -2357,29 +2468,40 @@
                                 display: true,
                                 position: 'left',
                                 stacked: true,
-                                grid: { color: '#f3f4f6', borderDash: [5, 5], drawBorder: false },
+                                grace: '15%', // 追加: グラフ上部に15%の余裕を持たせる
+                                grid: { color: '#e5e7eb', borderDash: [4, 4], drawBorder: false },
                                 title: {
                                     display: true,
                                     text: '応募数',
-                                    color: '#9ca3af'
+                                    color: '#9ca3af',
+                                    font: { weight: 'bold' }
                                 },
-                                ticks: { color: '#6b7280' }
+                                ticks: { color: '#6b7280', font: { family: "'Inter', sans-serif" } }
                             },
                             'y-ratio': {
                                 type: 'linear',
                                 display: true,
                                 position: 'right',
                                 min: 0,
-                                max: 100,
+                                max: 115, // 変更: 100から115に増やしてポイント自体を下げる
                                 grid: {
                                     drawOnChartArea: false, // グリッド線が重ならないようにする
                                 },
                                 title: {
                                     display: true,
                                     text: 'ターゲット割合 (%)',
-                                    color: '#9ca3af'
+                                    color: '#9ca3af',
+                                    font: { weight: 'bold' }
                                 },
-                                ticks: { color: '#6b7280' }
+                                ticks: { 
+                                    color: '#6b7280', 
+                                    font: { family: "'Inter', sans-serif" },
+                                    stepSize: 20, // 変更: 20刻みに固定
+                                    callback: function(value) {
+                                        // 追加: 100より大きい目盛りは非表示にして見栄えを保つ
+                                        return value > 100 ? '' : value;
+                                    }
+                                }
                             }
                         },
                         plugins: {
@@ -2387,16 +2509,19 @@
                                 labels: {
                                     padding: 20, // 凡例とグラフの間に余白を追加
                                     usePointStyle: true,
-                                    color: '#4b5563'
+                                    color: '#4b5563',
+                                    font: { weight: 'bold' }
                                 }
                             },
                             tooltip: {
-                                backgroundColor: 'rgba(17, 24, 39, 0.9)',
+                                backgroundColor: 'rgba(17, 24, 39, 0.85)',
                                 titleColor: '#f9fafb',
                                 bodyColor: '#f9fafb',
-                                padding: 12,
-                                cornerRadius: 8,
+                                padding: 14,
+                                cornerRadius: 12,
                                 usePointStyle: true,
+                                borderColor: 'rgba(255,255,255,0.1)',
+                                borderWidth: 1,
                                 callbacks: {
                                     label: function(context) {
                                         let label = context.dataset.label || '';
@@ -2444,7 +2569,7 @@
                 activeCols = Array.from(colSet);
                 
                 activeCols.sort((a,b) => {
-                    const specialOrder = { "(突合求人なし)": 5, "対象外の給与区分": 4, "(タグなし)": 3, "(空欄)": 2, "(空欄/不明)": 2, "その他": 1 };
+                    const specialOrder = { "(突合求人なし)": 6, "対象外の給与区分": 5, "(タグなし)": 4, "(該当なし)": 3, "(空欄)": 2, "(空欄/不明)": 2, "その他": 1 };
                     const orderA = specialOrder[a] || 0;
                     const orderB = specialOrder[b] || 0;
                     if (orderA !== orderB) return orderA - orderB;
@@ -2606,7 +2731,7 @@
                     
                     if (aVals[colIdx] !== bVals[colIdx]) {
                         let dim = rowDims[colIdx];
-                        const specialOrder = { "(突合求人なし)": 5, "対象外の給与区分": 4, "(タグなし)": 3, "(空欄)": 2, "(空欄/不明)": 2, "その他": 1 };
+                        const specialOrder = { "(突合求人なし)": 6, "対象外の給与区分": 5, "(タグなし)": 4, "(該当なし)": 3, "(空欄)": 2, "(空欄/不明)": 2, "その他": 1 };
                         let ordA = specialOrder[aVals[colIdx]] || 0;
                         let ordB = specialOrder[bVals[colIdx]] || 0;
                         
@@ -2638,7 +2763,7 @@
                 if (!currentSortCol.startsWith('row_') && currentSortCol !== 'default') {
                     for (let i = 0; i < rowDims.length; i++) {
                         if (aVals[i] !== bVals[i]) {
-                            const specialOrder = { "(突合求人なし)": 5, "対象外の給与区分": 4, "(タグなし)": 3, "(空欄)": 2, "(空欄/不明)": 2, "その他": 1 };
+                            const specialOrder = { "(突合求人なし)": 6, "対象外の給与区分": 5, "(タグなし)": 4, "(該当なし)": 3, "(空欄)": 2, "(空欄/不明)": 2, "その他": 1 };
                             let ordA = specialOrder[aVals[i]] || 0;
                             let ordB = specialOrder[bVals[i]] || 0;
                             if (ordA !== ordB) return ordA - ordB;
@@ -2707,7 +2832,7 @@
                 // 3. デフォルト（フォールバック）の順序付け
                 for (let i = 0; i < rowDims.length; i++) {
                     if (aVals[i] !== bVals[i]) {
-                        const specialOrder = { "(突合求人なし)": 5, "対象外の給与区分": 4, "(タグなし)": 3, "(空欄)": 2, "(空欄/不明)": 2, "その他": 1 };
+                        const specialOrder = { "(突合求人なし)": 6, "対象外の給与区分": 5, "(タグなし)": 4, "(該当なし)": 3, "(空欄)": 2, "(空欄/不明)": 2, "その他": 1 };
                         let ordA = specialOrder[aVals[i]] || 0;
                         let ordB = specialOrder[bVals[i]] || 0;
                         if (ordA !== ordB) return ordA - ordB;
