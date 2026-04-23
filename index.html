@@ -169,24 +169,8 @@
             <!-- メニュー項目 -->
             <ul class="flex-1 overflow-y-auto py-4 px-3 space-y-2 min-w-[16rem]">
                 <li>
-                    <a href="#" class="sidebar-menu-item flex items-center justify-between p-3 bg-gray-800 rounded cursor-pointer hover:bg-gray-700 transition font-medium text-gray-300" data-category="trend" data-dim="トレンド">
-                        <span class="flex items-center">
-                            <svg class="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>
-                            応募トレンドグラフ
-                        </span>
-                    </a>
-                </li>
-                <li>
-                    <a href="#" class="sidebar-menu-item flex items-center justify-between p-3 bg-gray-800 rounded cursor-pointer hover:bg-gray-700 transition font-medium text-gray-300" data-category="before-after" data-dim="ビフォーアフター">
-                        <span class="flex items-center">
-                            <svg class="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
-                            ビフォー vs アフター
-                        </span>
-                    </a>
-                </li>
-                <li>
                     <details class="group" open>
-                        <summary class="flex items-center justify-between p-3 bg-gray-800 rounded cursor-pointer hover:bg-gray-700 transition font-medium">
+                        <summary class="sticky -top-4 z-10 flex items-center justify-between p-3 bg-gray-800 rounded cursor-pointer hover:bg-gray-700 transition font-medium shadow-md ring-4 ring-gray-900">
                             <span class="flex items-center">
                                 <svg class="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                                 年代別応募分析
@@ -232,6 +216,22 @@
                         <span class="flex items-center">
                             <svg class="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                             キーワード分析
+                        </span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="sidebar-menu-item flex items-center justify-between p-3 bg-gray-800 rounded cursor-pointer hover:bg-gray-700 transition font-medium text-gray-300" data-category="trend" data-dim="トレンド">
+                        <span class="flex items-center">
+                            <svg class="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>
+                            応募トレンドグラフ
+                        </span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="sidebar-menu-item flex items-center justify-between p-3 bg-gray-800 rounded cursor-pointer hover:bg-gray-700 transition font-medium text-gray-300" data-category="before-after" data-dim="ビフォーアフター">
+                        <span class="flex items-center">
+                            <svg class="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                            ビフォー vs アフター
                         </span>
                     </a>
                 </li>
@@ -404,6 +404,7 @@
 
         let globalFinalData = [];
         let filteredData = [];
+        let trendFilteredData = []; // ★追加: トレンド用のフィルタリング済みデータをグローバルに保持
         let globalDuplicateCount = 0; 
         let globalDuplicateData = []; 
         let currentDimension = "応募年月";
@@ -411,8 +412,9 @@
         let currentCategory = "age"; // 現在の表示カテゴリ
         
         // トレンドグラフ用状態
-        let trendMode = 'cumulative'; // 'daily' or 'cumulative'
-        let trendDatasetVisibility = [true, true, true, true, true]; // データセットのON/OFF状態
+        let trendMode = 'cumulative'; // 'daily' or 'cumulative' or 'all_period'
+        let trendDatasetVisibility = [true, true, true, true, true]; // 単月用データセットのON/OFF状態
+        let trendAllPeriodVisibility = [true, true]; // 全期間用データセット(短期MA, 長期MA)のON/OFF状態
 
         // カスタムピボットの折りたたみ状態管理用
         let customPivotCollapsedStates = new Set();
@@ -482,30 +484,52 @@
 
         // トレンドグラフのデータセット表示切り替え用グローバル関数
         window.toggleTrendDataset = function(index) {
-            trendDatasetVisibility[index] = !trendDatasetVisibility[index];
             const chart = chartInstances['trend'];
-            if (chart) {
+            if (!chart) return;
+
+            if (trendMode === 'all_period') {
+                trendAllPeriodVisibility[index] = !trendAllPeriodVisibility[index];
+                // dataset構成: 0:棒グラフ, 1:短期MA, 2:長期MA
+                chart.data.datasets[index + 1].hidden = !trendAllPeriodVisibility[index];
+                chart.update();
+                
+                const btn = document.getElementById(`legend-btn-${index}`);
+                if (btn) {
+                    const styles = [
+                        { on: ['bg-orange-100', 'text-orange-600', 'border-orange-300'], off: ['bg-gray-100', 'text-gray-400', 'border-gray-200'] },
+                        { on: ['bg-emerald-100', 'text-emerald-600', 'border-emerald-300'], off: ['bg-gray-100', 'text-gray-400', 'border-gray-200'] }
+                    ][index];
+
+                    if (trendAllPeriodVisibility[index]) {
+                        btn.classList.remove(...styles.off);
+                        btn.classList.add(...styles.on);
+                    } else {
+                        btn.classList.remove(...styles.on);
+                        btn.classList.add(...styles.off);
+                    }
+                }
+            } else {
+                trendDatasetVisibility[index] = !trendDatasetVisibility[index];
                 chart.data.datasets[index].hidden = !trendDatasetVisibility[index];
                 chart.update();
-            }
-            
-            // ボタンのスタイル更新
-            const btn = document.getElementById(`legend-btn-${index}`);
-            if (btn) {
-                const styles = [
-                    { on: ['bg-blue-100', 'text-blue-700', 'border-blue-300'], off: ['bg-gray-100', 'text-gray-400', 'border-gray-200'] },
-                    { on: ['bg-blue-50', 'text-blue-500', 'border-blue-200'], off: ['bg-gray-100', 'text-gray-400', 'border-gray-200'] },
-                    { on: ['bg-orange-100', 'text-orange-600', 'border-orange-300'], off: ['bg-gray-100', 'text-gray-400', 'border-gray-200'] },
-                    { on: ['bg-emerald-100', 'text-emerald-600', 'border-emerald-300'], off: ['bg-gray-100', 'text-gray-400', 'border-gray-200'] },
-                    { on: ['bg-purple-100', 'text-purple-600', 'border-purple-300'], off: ['bg-gray-100', 'text-gray-400', 'border-gray-200'] }
-                ][index];
+                
+                const btn = document.getElementById(`legend-btn-${index}`);
+                if (btn) {
+                    const styles = [
+                        { on: ['bg-blue-100', 'text-blue-700', 'border-blue-300'], off: ['bg-gray-100', 'text-gray-400', 'border-gray-200'] },
+                        { on: ['bg-blue-50', 'text-blue-500', 'border-blue-200'], off: ['bg-gray-100', 'text-gray-400', 'border-gray-200'] },
+                        { on: ['bg-orange-100', 'text-orange-600', 'border-orange-300'], off: ['bg-gray-100', 'text-gray-400', 'border-gray-200'] },
+                        { on: ['bg-emerald-100', 'text-emerald-600', 'border-emerald-300'], off: ['bg-gray-100', 'text-gray-400', 'border-gray-200'] },
+                        { on: ['bg-purple-100', 'text-purple-600', 'border-purple-300'], off: ['bg-gray-100', 'text-gray-400', 'border-gray-200'] }
+                    ][index];
 
-                if (trendDatasetVisibility[index]) {
-                    btn.classList.remove(...styles.off);
-                    btn.classList.add(...styles.on);
-                } else {
-                    btn.classList.remove(...styles.on);
-                    btn.classList.add(...styles.off);
+                    if (trendDatasetVisibility[index]) {
+                        btn.classList.remove(...styles.off);
+                        btn.classList.add(...styles.on);
+                    } else {
+                        btn.classList.remove(...styles.on);
+                        btn.classList.add(...styles.off);
+                    }
                 }
             }
         };
@@ -576,8 +600,8 @@
             const rawKeywords = document.getElementById('keywordInput').value;
             const searchKeywords = rawKeywords.split('\n').map(kw => kw.trim()).filter(kw => kw !== "");
 
-            if (!fileA || !fileB || !keyNameA || !keyNameB) {
-                msgEl.textContent = "❌ ファイルA, Bとキー列名を入力してください。";
+            if (!fileA || !keyNameA) {
+                msgEl.textContent = "❌ ファイルAとキー列名(ファイルA)は必須です。";
                 msgEl.className = "mt-4 text-sm font-semibold text-red-600"; return;
             }
 
@@ -586,7 +610,10 @@
             document.getElementById('resultArea').classList.add('hidden');
 
             try {
-                const [dataA, dataB] = await Promise.all([parseCSV(fileA, encoding), parseCSV(fileB, encoding)]);
+                const [dataA, dataB] = await Promise.all([
+                    parseCSV(fileA, encoding), 
+                    fileB ? parseCSV(fileB, encoding) : Promise.resolve([])
+                ]);
                 const startTime = performance.now();
 
                 let duplicateCount = 0;
@@ -613,10 +640,12 @@
                 globalDuplicateData = duplicateList; 
 
                 const mapB = new Map();
-                dataB.forEach(rowB => {
-                    const processedKey = preprocessKey(rowB[keyNameB]);
-                    if (processedKey !== "" && !mapB.has(processedKey)) mapB.set(processedKey, rowB);
-                });
+                if (fileB && keyNameB) {
+                    dataB.forEach(rowB => {
+                        const processedKey = preprocessKey(rowB[keyNameB]);
+                        if (processedKey !== "" && !mapB.has(processedKey)) mapB.set(processedKey, rowB);
+                    });
+                }
 
                 let matchCount = 0;
 
@@ -730,9 +759,16 @@
                 const timeTaken = (performance.now() - startTime).toFixed(2);
                 const joinRate = uniqueDataA.length > 0 ? ((matchCount / uniqueDataA.length) * 100).toFixed(1) : 0;
                 
+                let joinMsg = "";
+                if (fileB) {
+                    joinMsg = `<span class="text-indigo-600">🎯 ファイルBとのJOIN件数: ${matchCount.toLocaleString()}件 (JOIN率: ${joinRate}%)</span> <br>`;
+                } else {
+                    joinMsg = `<span class="text-indigo-600">🎯 ファイルBなし (ファイルA単独処理)</span> <br>`;
+                }
+
                 msgEl.innerHTML = `✅ 処理完了！ 最終出力件数: ${globalFinalData.length.toLocaleString()}件 <br> 
                                    <span class="text-red-600">🗑️ 事前重複削除(ファイルA): ${duplicateCount.toLocaleString()}件</span> <br>
-                                   <span class="text-indigo-600">🎯 ファイルBとのJOIN件数: ${matchCount.toLocaleString()}件 (JOIN率: ${joinRate}%)</span> <br>
+                                   ${joinMsg}
                                    <span class="text-gray-500 text-xs">(処理時間: ${timeTaken} ms)</span>`;
                 msgEl.className = "mt-4 text-sm font-semibold text-green-600";
 
@@ -1018,7 +1054,8 @@
                 const ageMin = parseInt(document.getElementById('filterAgeMin').value, 10);
                 const ageMax = parseInt(document.getElementById('filterAgeMax').value, 10);
                 
-                let trendFilteredData = filteredData.filter(row => {
+                // ★変更: let を外してグローバル変数に代入
+                trendFilteredData = filteredData.filter(row => {
                     const ageVal = row["年齢"];
                     if (ageVal === "") return false;
                     const ageNum = parseInt(String(ageVal).replace("歳", ""), 10);
@@ -1525,7 +1562,10 @@
                         {
                             label: '日別応募数',
                             data: dataBar,
-                            backgroundColor: dataBar.map((_, i) => i < spanDays ? '#93c5fd' : '#fdba74'), // blue-300 : orange-300
+                            backgroundColor: dataBar.map((_, i) => i < spanDays ? 'rgba(147, 197, 253, 0.85)' : 'rgba(253, 186, 116, 0.85)'), // blue-300 : orange-300
+                            hoverBackgroundColor: dataBar.map((_, i) => i < spanDays ? '#60a5fa' : '#fb923c'),
+                            borderRadius: 4,
+                            borderSkipped: false,
                             order: 3,
                             datalabels: {
                                 display: function(context) {
@@ -1534,8 +1574,9 @@
                                 align: 'top',
                                 anchor: 'end',
                                 color: '#4b5563',
-                                font: { weight: 'bold', size: 10 },
-                                formatter: Math.round
+                                font: { weight: 'bold', size: 11 },
+                                formatter: Math.round,
+                                offset: 4
                             }
                         },
                         {
@@ -1543,10 +1584,12 @@
                             data: dataBeforeAvg,
                             type: 'line',
                             borderColor: '#2563eb', // blue-600
-                            backgroundColor: 'rgba(37, 99, 235, 0.15)',
+                            backgroundColor: 'rgba(37, 99, 235, 0.1)',
                             borderWidth: 2,
+                            borderDash: [5, 5],
                             pointRadius: 0,
-                            fill: 'origin',
+                            fill: true,
+                            tension: 0.4,
                             spanGaps: false,
                             order: 1,
                             datalabels: { display: false }
@@ -1556,10 +1599,12 @@
                             data: dataAfterAvg,
                             type: 'line',
                             borderColor: '#ea580c', // orange-600
-                            backgroundColor: 'rgba(234, 88, 12, 0.15)',
+                            backgroundColor: 'rgba(234, 88, 12, 0.1)',
                             borderWidth: 2,
+                            borderDash: [5, 5],
                             pointRadius: 0,
-                            fill: 'origin',
+                            fill: true,
+                            tension: 0.4,
                             spanGaps: false,
                             order: 2,
                             datalabels: { display: false }
@@ -1570,7 +1615,7 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     layout: {
-                        padding: { top: 20 }
+                        padding: { top: 30 }
                     },
                     interaction: {
                         mode: 'index',
@@ -1579,16 +1624,24 @@
                     scales: {
                         x: {
                             grid: {
-                                color: (context) => context.index === spanDays ? '#ef4444' : '#e5e7eb', // 基準日で赤線を引く
-                                lineWidth: (context) => context.index === spanDays ? 2 : 1
-                            }
+                                display: false,
+                                drawBorder: false
+                            },
+                            ticks: { color: '#6b7280' }
                         },
                         y: {
                             beginAtZero: true,
+                            grid: {
+                                color: '#f3f4f6',
+                                borderDash: [5, 5],
+                                drawBorder: false
+                            },
                             title: {
                                 display: true,
-                                text: '応募数'
-                            }
+                                text: '応募数',
+                                color: '#9ca3af'
+                            },
+                            ticks: { color: '#6b7280' }
                         }
                     },
                     plugins: {
@@ -1596,6 +1649,12 @@
                             display: false 
                         },
                         tooltip: {
+                            backgroundColor: 'rgba(17, 24, 39, 0.9)',
+                            titleColor: '#f9fafb',
+                            bodyColor: '#f9fafb',
+                            padding: 12,
+                            cornerRadius: 8,
+                            usePointStyle: true,
                             callbacks: {
                                 label: function(context) {
                                     let label = context.dataset.label || '';
@@ -1623,150 +1682,409 @@
             const ageMin = parseInt(document.getElementById('filterAgeMin').value, 10);
             const ageMax = parseInt(document.getElementById('filterAgeMax').value, 10);
 
-            let targetDate = null;
-            const filterDateEndStr = document.getElementById('filterDateEnd').value;
-            if (filterDateEndStr) {
-                targetDate = new Date(filterDateEndStr);
-            } else {
+            const isAllPeriod = trendMode === 'all_period';
+
+            let chartLabels = [];
+            let chartDatasets = [];
+            let titleText = "";
+            let legendHtml = "";
+
+            if (isAllPeriod) {
+                // ---------- 集計全期間モード ----------
+                let minTime = Infinity;
                 let maxTime = 0;
-                globalFinalData.forEach(row => {
-                    if (row["応募日時"]) {
-                        const d = new Date(String(row["応募日時"]).replace(/-/g, '/'));
-                        if (!isNaN(d.getTime()) && d.getTime() > maxTime) {
-                            maxTime = d.getTime();
+                
+                trendFilteredData.forEach(row => {
+                    const dStr = row["応募日時"];
+                    if (dStr) {
+                        const t = new Date(String(dStr).replace(/-/g, '/')).getTime();
+                        if (!isNaN(t)) {
+                            if (t < minTime) minTime = t;
+                            if (t > maxTime) maxTime = t;
                         }
                     }
                 });
-                if (maxTime > 0) {
-                    targetDate = new Date(maxTime);
-                } else {
-                    targetDate = new Date();
+
+                if (minTime === Infinity) {
+                    minTime = new Date().getTime();
+                    maxTime = minTime;
                 }
-            }
 
-            const tY = targetDate.getFullYear();
-            const tM = targetDate.getMonth();
-            const tD = targetDate.getDate();
-            
-            const daysInMonth = new Date(tY, tM + 1, 0).getDate();
-            
-            const counts = {
-                m0: new Array(32).fill(0),
-                m1: new Array(32).fill(0),
-                m2: new Array(32).fill(0),
-                m12: new Array(32).fill(0)
-            };
+                const startDate = new Date(minTime); startDate.setHours(0,0,0,0);
+                const endDate = new Date(maxTime); endDate.setHours(0,0,0,0);
+                const totalDays = Math.max(1, Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1);
 
-            const getMonthDiff = (y, m) => {
-                return (tY - y) * 12 + (tM - m);
-            };
+                const dailyCountsMap = {};
+                for(let i=0; i<totalDays; i++) {
+                    let d = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
+                    let y = d.getFullYear();
+                    let m = String(d.getMonth() + 1).padStart(2, '0');
+                    let dd = String(d.getDate()).padStart(2, '0');
+                    let key = `${y}/${m}/${dd}`;
+                    dailyCountsMap[key] = 0;
+                    chartLabels.push(`${m}/${dd}`);
+                }
 
-            globalFinalData.forEach(row => {
-                const dateStr = row["応募日時"];
-                if (!dateStr) return;
-                const d = new Date(String(dateStr).replace(/-/g, '/'));
-                if (isNaN(d.getTime())) return;
+                trendFilteredData.forEach(row => {
+                    const dStr = row["応募日時"];
+                    if (!dStr) return;
+                    const d = new Date(String(dStr).replace(/-/g, '/'));
+                    if (isNaN(d.getTime())) return;
+                    d.setHours(0,0,0,0);
+                    
+                    let y = d.getFullYear();
+                    let m = String(d.getMonth() + 1).padStart(2, '0');
+                    let dd = String(d.getDate()).padStart(2, '0');
+                    let key = `${y}/${m}/${dd}`;
+                    if (dailyCountsMap[key] !== undefined) {
+                        dailyCountsMap[key]++;
+                    }
+                });
 
-                const ageVal = row["年齢"];
-                if (ageVal !== "") {
-                    const ageNum = parseInt(String(ageVal).replace("歳", ""), 10);
-                    if (!isNaN(ageNum)) {
-                        if ((!isNaN(ageMin) && ageNum < ageMin) || (!isNaN(ageMax) && ageNum > ageMax)) {
+                const dailyCountsAll = [];
+                for(let i=0; i<totalDays; i++) {
+                    let d = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
+                    let y = d.getFullYear();
+                    let m = String(d.getMonth() + 1).padStart(2, '0');
+                    let dd = String(d.getDate()).padStart(2, '0');
+                    let key = `${y}/${m}/${dd}`;
+                    dailyCountsAll.push(dailyCountsMap[key]);
+                }
+
+                const shortSpan = Math.max(1, Math.floor(totalDays / 10));
+                const longSpan = Math.max(1, Math.floor(totalDays / 4));
+
+                const shortMA = [];
+                const longMA = [];
+                for(let i=0; i<totalDays; i++) {
+                    let sumShort = 0, countShort = 0;
+                    for(let j=Math.max(0, i - shortSpan + 1); j<=i; j++) {
+                        sumShort += dailyCountsAll[j];
+                        countShort++;
+                    }
+                    shortMA.push(sumShort / countShort);
+
+                    let sumLong = 0, countLong = 0;
+                    for(let j=Math.max(0, i - longSpan + 1); j<=i; j++) {
+                        sumLong += dailyCountsAll[j];
+                        countLong++;
+                    }
+                    longMA.push(sumLong / countLong);
+                }
+
+                titleText = `応募トレンド (集計全期間: ${totalDays}日間)`;
+
+                const btnClassesAll = [
+                    trendAllPeriodVisibility[0] ? 'bg-orange-100 text-orange-600 border-orange-300' : 'bg-gray-100 text-gray-400 border-gray-200',
+                    trendAllPeriodVisibility[1] ? 'bg-emerald-100 text-emerald-600 border-emerald-300' : 'bg-gray-100 text-gray-400 border-gray-200'
+                ];
+
+                legendHtml = `
+                    <button onclick="window.toggleTrendDataset(0)" id="legend-btn-0" class="px-4 py-1.5 rounded-full text-sm font-bold border transition-colors focus:outline-none shadow-sm flex items-baseline gap-1 ${btnClassesAll[0]}">
+                        <span>短期移動平均 (${shortSpan}日)</span>
+                    </button>
+                    <button onclick="window.toggleTrendDataset(1)" id="legend-btn-1" class="px-4 py-1.5 rounded-full text-sm font-bold border transition-colors focus:outline-none shadow-sm flex items-baseline gap-1 ${btnClassesAll[1]}">
+                        <span>長期移動平均 (${longSpan}日)</span>
+                    </button>
+                `;
+
+                chartDatasets = [
+                    {
+                        label: '日別応募数',
+                        data: dailyCountsAll,
+                        backgroundColor: 'rgba(147, 197, 253, 0.85)', // blue-300
+                        hoverBackgroundColor: '#93c5fd',
+                        borderRadius: 4,
+                        borderSkipped: false,
+                        order: 3,
+                        datalabels: {
+                            display: false
+                        }
+                    },
+                    {
+                        label: `短期移動平均 (${shortSpan}日)`,
+                        data: shortMA,
+                        type: 'line',
+                        borderColor: '#f97316', // orange-500
+                        backgroundColor: '#f97316',
+                        borderWidth: 2.5, 
+                        pointBackgroundColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 0, 
+                        pointHoverRadius: 5,
+                        fill: false, 
+                        tension: 0.4,
+                        order: 1,
+                        hidden: !trendAllPeriodVisibility[0],
+                        datalabels: { display: false }
+                    },
+                    {
+                        label: `長期移動平均 (${longSpan}日)`,
+                        data: longMA,
+                        type: 'line',
+                        borderColor: '#10b981', // emerald-500
+                        backgroundColor: '#10b981',
+                        borderWidth: 2.5, 
+                        pointBackgroundColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 0, 
+                        pointHoverRadius: 5,
+                        fill: false, 
+                        tension: 0.4,
+                        order: 2,
+                        hidden: !trendAllPeriodVisibility[1],
+                        datalabels: { display: false }
+                    }
+                ];
+
+            } else {
+                // ---------- 単月（日別/累積）モード ----------
+                let targetDate = null;
+                const filterDateEndStr = document.getElementById('filterDateEnd').value;
+                if (filterDateEndStr) {
+                    targetDate = new Date(filterDateEndStr);
+                } else {
+                    let maxTime = 0;
+                    globalFinalData.forEach(row => {
+                        if (row["応募日時"]) {
+                            const d = new Date(String(row["応募日時"]).replace(/-/g, '/'));
+                            if (!isNaN(d.getTime()) && d.getTime() > maxTime) {
+                                maxTime = d.getTime();
+                            }
+                        }
+                    });
+                    if (maxTime > 0) {
+                        targetDate = new Date(maxTime);
+                    } else {
+                        targetDate = new Date();
+                    }
+                }
+
+                const tY = targetDate.getFullYear();
+                const tM = targetDate.getMonth();
+                const tD = targetDate.getDate();
+                
+                const daysInMonth = new Date(tY, tM + 1, 0).getDate();
+                
+                const counts = {
+                    m0: new Array(32).fill(0),
+                    m1: new Array(32).fill(0),
+                    m2: new Array(32).fill(0),
+                    m12: new Array(32).fill(0)
+                };
+
+                const getMonthDiff = (y, m) => {
+                    return (tY - y) * 12 + (tM - m);
+                };
+
+                globalFinalData.forEach(row => {
+                    const dateStr = row["応募日時"];
+                    if (!dateStr) return;
+                    const d = new Date(String(dateStr).replace(/-/g, '/'));
+                    if (isNaN(d.getTime())) return;
+
+                    const ageVal = row["年齢"];
+                    if (ageVal !== "") {
+                        const ageNum = parseInt(String(ageVal).replace("歳", ""), 10);
+                        if (!isNaN(ageNum)) {
+                            if ((!isNaN(ageMin) && ageNum < ageMin) || (!isNaN(ageMax) && ageNum > ageMax)) {
+                                return; 
+                            }
+                        } else {
                             return; 
                         }
                     } else {
                         return; 
                     }
-                } else {
-                    return; 
+
+                    const y = d.getFullYear();
+                    const m = d.getMonth();
+                    const day = d.getDate();
+
+                    const diff = getMonthDiff(y, m);
+                    
+                    if (diff === 0) counts.m0[day]++;
+                    else if (diff === 1) counts.m1[day]++;
+                    else if (diff === 2) counts.m2[day]++;
+                    else if (diff === 12) counts.m12[day]++;
+                });
+
+                const dataM0_actual = [];
+                const dataM0_predict = [];
+                const dataM1 = [];
+                const dataM2 = [];
+                const dataM12 = [];
+
+                let sumM0 = 0;
+                for (let i = 1; i <= tD; i++) sumM0 += counts.m0[i];
+                const avgM0 = tD > 0 ? sumM0 / tD : 0;
+                const predictTotal = Math.round(sumM0 + avgM0 * (daysInMonth - tD));
+
+                let sumM1 = 0, sumM2 = 0, sumM12 = 0;
+                for (let i = 1; i <= daysInMonth; i++) {
+                    sumM1 += counts.m1[i] || 0;
+                    sumM2 += counts.m2[i] || 0;
+                    sumM12 += counts.m12[i] || 0;
                 }
 
-                const y = d.getFullYear();
-                const m = d.getMonth();
-                const day = d.getDate();
+                let cumM0 = 0;
+                let cumM1 = 0;
+                let cumM2 = 0;
+                let cumM12 = 0;
+                let cumPredict = sumM0;
 
-                const diff = getMonthDiff(y, m);
-                
-                if (diff === 0) counts.m0[day]++;
-                else if (diff === 1) counts.m1[day]++;
-                else if (diff === 2) counts.m2[day]++;
-                else if (diff === 12) counts.m12[day]++;
-            });
-
-            const labels = [];
-            const dataM0_actual = [];
-            const dataM0_predict = [];
-            const dataM1 = [];
-            const dataM2 = [];
-            const dataM12 = [];
-
-            let sumM0 = 0;
-            for (let i = 1; i <= tD; i++) sumM0 += counts.m0[i];
-            const avgM0 = tD > 0 ? sumM0 / tD : 0;
-            const predictTotal = Math.round(sumM0 + avgM0 * (daysInMonth - tD));
-
-            let sumM1 = 0, sumM2 = 0, sumM12 = 0;
-            for (let i = 1; i <= daysInMonth; i++) {
-                sumM1 += counts.m1[i] || 0;
-                sumM2 += counts.m2[i] || 0;
-                sumM12 += counts.m12[i] || 0;
-            }
-
-            let cumM0 = 0;
-            let cumM1 = 0;
-            let cumM2 = 0;
-            let cumM12 = 0;
-            let cumPredict = sumM0;
-
-            for (let i = 1; i <= 31; i++) {
-                labels.push(i + '日');
-                
-                if (trendMode === 'cumulative') {
-                    cumM1 += counts.m1[i];
-                    cumM2 += counts.m2[i];
-                    cumM12 += counts.m12[i];
+                for (let i = 1; i <= 31; i++) {
+                    chartLabels.push(i + '日');
                     
-                    dataM1.push(cumM1);
-                    dataM2.push(cumM2);
-                    dataM12.push(cumM12);
-                    
-                    if (i <= tD) {
-                        cumM0 += counts.m0[i];
-                        dataM0_actual.push(cumM0);
-                        dataM0_predict.push(null); 
-                    } else if (i <= daysInMonth) {
-                        dataM0_actual.push(null);
-                        cumPredict += avgM0;
-                        dataM0_predict.push(cumPredict);
+                    if (trendMode === 'cumulative') {
+                        cumM1 += counts.m1[i];
+                        cumM2 += counts.m2[i];
+                        cumM12 += counts.m12[i];
+                        
+                        dataM1.push(cumM1);
+                        dataM2.push(cumM2);
+                        dataM12.push(cumM12);
+                        
+                        if (i <= tD) {
+                            cumM0 += counts.m0[i];
+                            dataM0_actual.push(cumM0);
+                            dataM0_predict.push(null); 
+                        } else if (i <= daysInMonth) {
+                            dataM0_actual.push(null);
+                            cumPredict += avgM0;
+                            dataM0_predict.push(cumPredict);
+                        } else {
+                            dataM0_actual.push(null);
+                            dataM0_predict.push(null);
+                        }
                     } else {
-                        dataM0_actual.push(null);
-                        dataM0_predict.push(null);
-                    }
-                } else {
-                    dataM1.push(counts.m1[i]);
-                    dataM2.push(counts.m2[i]);
-                    dataM12.push(counts.m12[i]);
-                    
-                    if (i <= tD) {
-                        dataM0_actual.push(counts.m0[i]);
-                        dataM0_predict.push(null);
-                    } else if (i <= daysInMonth) {
-                        dataM0_actual.push(null);
-                        dataM0_predict.push(avgM0); 
-                    } else {
-                        dataM0_actual.push(null);
-                        dataM0_predict.push(null);
+                        dataM1.push(counts.m1[i]);
+                        dataM2.push(counts.m2[i]);
+                        dataM12.push(counts.m12[i]);
+                        
+                        if (i <= tD) {
+                            dataM0_actual.push(counts.m0[i]);
+                            dataM0_predict.push(null);
+                        } else if (i <= daysInMonth) {
+                            dataM0_actual.push(null);
+                            dataM0_predict.push(avgM0); 
+                        } else {
+                            dataM0_actual.push(null);
+                            dataM0_predict.push(null);
+                        }
                     }
                 }
-            }
 
-            const btnClasses = [
-                trendDatasetVisibility[0] ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-gray-100 text-gray-400 border-gray-200',
-                trendDatasetVisibility[1] ? 'bg-blue-50 text-blue-500 border-blue-200' : 'bg-gray-100 text-gray-400 border-gray-200',
-                trendDatasetVisibility[2] ? 'bg-orange-100 text-orange-600 border-orange-300' : 'bg-gray-100 text-gray-400 border-gray-200',
-                trendDatasetVisibility[3] ? 'bg-emerald-100 text-emerald-600 border-emerald-300' : 'bg-gray-100 text-gray-400 border-gray-200',
-                trendDatasetVisibility[4] ? 'bg-purple-100 text-purple-600 border-purple-300' : 'bg-gray-100 text-gray-400 border-gray-200'
-            ];
+                titleText = `応募トレンド (${tY}年${tM + 1}月)`;
+
+                const btnClasses = [
+                    trendDatasetVisibility[0] ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-gray-100 text-gray-400 border-gray-200',
+                    trendDatasetVisibility[1] ? 'bg-blue-50 text-blue-500 border-blue-200' : 'bg-gray-100 text-gray-400 border-gray-200',
+                    trendDatasetVisibility[2] ? 'bg-orange-100 text-orange-600 border-orange-300' : 'bg-gray-100 text-gray-400 border-gray-200',
+                    trendDatasetVisibility[3] ? 'bg-emerald-100 text-emerald-600 border-emerald-300' : 'bg-gray-100 text-gray-400 border-gray-200',
+                    trendDatasetVisibility[4] ? 'bg-purple-100 text-purple-600 border-purple-300' : 'bg-gray-100 text-gray-400 border-gray-200'
+                ];
+
+                legendHtml = `
+                    <button onclick="window.toggleTrendDataset(0)" id="legend-btn-0" class="px-4 py-1.5 rounded-full text-sm font-bold border transition-colors focus:outline-none shadow-sm flex items-baseline gap-1 ${btnClasses[0]}">
+                        <span>当月実績</span><span class="text-xs font-medium opacity-80">(${sumM0.toLocaleString()}件)</span>
+                    </button>
+                    <button onclick="window.toggleTrendDataset(1)" id="legend-btn-1" class="px-4 py-1.5 rounded-full text-sm font-bold border transition-colors focus:outline-none shadow-sm flex items-baseline gap-1 ${btnClasses[1]}">
+                        <span>当月予測</span><span class="text-xs font-medium opacity-80">(${predictTotal.toLocaleString()}件)</span>
+                    </button>
+                    <button onclick="window.toggleTrendDataset(2)" id="legend-btn-2" class="px-4 py-1.5 rounded-full text-sm font-bold border transition-colors focus:outline-none shadow-sm flex items-baseline gap-1 ${btnClasses[2]}">
+                        <span>先月</span><span class="text-xs font-medium opacity-80">(${sumM1.toLocaleString()}件)</span>
+                    </button>
+                    <button onclick="window.toggleTrendDataset(3)" id="legend-btn-3" class="px-4 py-1.5 rounded-full text-sm font-bold border transition-colors focus:outline-none shadow-sm flex items-baseline gap-1 ${btnClasses[3]}">
+                        <span>先々月</span><span class="text-xs font-medium opacity-80">(${sumM2.toLocaleString()}件)</span>
+                    </button>
+                    <button onclick="window.toggleTrendDataset(4)" id="legend-btn-4" class="px-4 py-1.5 rounded-full text-sm font-bold border transition-colors focus:outline-none shadow-sm flex items-baseline gap-1 ${btnClasses[4]}">
+                        <span>昨年同月</span><span class="text-xs font-medium opacity-80">(${sumM12.toLocaleString()}件)</span>
+                    </button>
+                `;
+
+                chartDatasets = [
+                    {
+                        label: '当月実績',
+                        data: dataM0_actual,
+                        backgroundColor: 'rgba(37, 99, 235, 0.85)', // blue-600
+                        hoverBackgroundColor: '#2563eb',
+                        borderRadius: 4,
+                        borderSkipped: false,
+                        order: 5,
+                        hidden: !trendDatasetVisibility[0],
+                        datalabels: {
+                            display: function(context) { return context.dataset.data[context.dataIndex] > 0; },
+                            align: 'top', anchor: 'end', color: '#1e3a8a', font: { weight: 'bold', size: 10 }, formatter: Math.round, offset: 4
+                        }
+                    },
+                    {
+                        label: '当月予測',
+                        data: dataM0_predict,
+                        backgroundColor: 'rgba(191, 219, 254, 0.85)', // blue-200
+                        hoverBackgroundColor: '#93c5fd',
+                        borderRadius: 4,
+                        borderSkipped: false,
+                        order: 5,
+                        hidden: !trendDatasetVisibility[1],
+                        datalabels: {
+                            display: function(context) { return context.dataset.data[context.dataIndex] > 0; },
+                            align: 'top', anchor: 'end', color: '#3b82f6', font: { weight: 'bold', size: 10 }, formatter: Math.round, offset: 4
+                        }
+                    },
+                    {
+                        label: '先月',
+                        data: dataM1,
+                        type: 'line',
+                        borderColor: '#f59e0b', // orange-500
+                        backgroundColor: '#f59e0b',
+                        borderWidth: 2.5, 
+                        pointBackgroundColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 3, 
+                        pointHoverRadius: 6, 
+                        fill: false, 
+                        tension: 0.4,
+                        order: 1,
+                        hidden: !trendDatasetVisibility[2],
+                        datalabels: { display: false }
+                    },
+                    {
+                        label: '先々月',
+                        data: dataM2,
+                        type: 'line',
+                        borderColor: '#10b981', // emerald-500
+                        backgroundColor: '#10b981',
+                        borderWidth: 2.5, 
+                        pointBackgroundColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 3, 
+                        pointHoverRadius: 6, 
+                        fill: false, 
+                        tension: 0.4,
+                        order: 2,
+                        hidden: !trendDatasetVisibility[3],
+                        datalabels: { display: false }
+                    },
+                    {
+                        label: '昨年同月',
+                        data: dataM12,
+                        type: 'line',
+                        borderColor: '#8b5cf6', // purple-500
+                        backgroundColor: '#8b5cf6',
+                        borderWidth: 2.5, 
+                        pointBackgroundColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 3, 
+                        pointHoverRadius: 6, 
+                        fill: false, 
+                        tension: 0.4,
+                        order: 3,
+                        hidden: !trendDatasetVisibility[4],
+                        datalabels: { display: false }
+                    }
+                ];
+            } // end if (isAllPeriod)
 
             let html = `
                 <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 w-full min-w-full">
@@ -1774,37 +2092,27 @@
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="text-xl font-bold text-gray-800 flex items-center">
                                 <span class="w-1.5 h-6 bg-blue-600 inline-block mr-2 rounded"></span>
-                                応募トレンド (${tY}年${tM + 1}月)
+                                ${titleText}
                             </h3>
                             <div class="flex items-center space-x-4 bg-gray-100 p-1.5 rounded-lg border border-gray-200">
                                 <label class="flex items-center cursor-pointer">
                                     <input type="radio" name="trendMode" value="daily" class="hidden peer" ${trendMode === 'daily' ? 'checked' : ''} onchange="window.changeTrendMode('daily');">
-                                    <span class="px-4 py-1.5 text-sm font-semibold rounded-md text-gray-500 peer-checked:bg-white peer-checked:text-blue-600 peer-checked:shadow-sm transition-all">日別</span>
+                                    <span class="px-4 py-1.5 text-sm font-semibold rounded-md text-gray-500 peer-checked:bg-white peer-checked:text-blue-600 peer-checked:shadow-sm transition-all">単月日別</span>
                                 </label>
                                 <label class="flex items-center cursor-pointer">
                                     <input type="radio" name="trendMode" value="cumulative" class="hidden peer" ${trendMode === 'cumulative' ? 'checked' : ''} onchange="window.changeTrendMode('cumulative');">
-                                    <span class="px-4 py-1.5 text-sm font-semibold rounded-md text-gray-500 peer-checked:bg-white peer-checked:text-blue-600 peer-checked:shadow-sm transition-all">累積</span>
+                                    <span class="px-4 py-1.5 text-sm font-semibold rounded-md text-gray-500 peer-checked:bg-white peer-checked:text-blue-600 peer-checked:shadow-sm transition-all">単月累積</span>
+                                </label>
+                                <label class="flex items-center cursor-pointer">
+                                    <input type="radio" name="trendMode" value="all_period" class="hidden peer" ${trendMode === 'all_period' ? 'checked' : ''} onchange="window.changeTrendMode('all_period');">
+                                    <span class="px-4 py-1.5 text-sm font-semibold rounded-md text-gray-500 peer-checked:bg-white peer-checked:text-blue-600 peer-checked:shadow-sm transition-all">集計全期間</span>
                                 </label>
                             </div>
                         </div>
                         
                         <!-- カスタム凡例（カプセルボタン + 件数表示） -->
                         <div class="flex flex-wrap gap-3" id="custom-legend-container">
-                            <button onclick="window.toggleTrendDataset(0)" id="legend-btn-0" class="px-4 py-1.5 rounded-full text-sm font-bold border transition-colors focus:outline-none shadow-sm flex items-baseline gap-1 ${btnClasses[0]}">
-                                <span>当月実績</span><span class="text-xs font-medium opacity-80">(${sumM0.toLocaleString()}件)</span>
-                            </button>
-                            <button onclick="window.toggleTrendDataset(1)" id="legend-btn-1" class="px-4 py-1.5 rounded-full text-sm font-bold border transition-colors focus:outline-none shadow-sm flex items-baseline gap-1 ${btnClasses[1]}">
-                                <span>当月予測</span><span class="text-xs font-medium opacity-80">(${predictTotal.toLocaleString()}件)</span>
-                            </button>
-                            <button onclick="window.toggleTrendDataset(2)" id="legend-btn-2" class="px-4 py-1.5 rounded-full text-sm font-bold border transition-colors focus:outline-none shadow-sm flex items-baseline gap-1 ${btnClasses[2]}">
-                                <span>先月</span><span class="text-xs font-medium opacity-80">(${sumM1.toLocaleString()}件)</span>
-                            </button>
-                            <button onclick="window.toggleTrendDataset(3)" id="legend-btn-3" class="px-4 py-1.5 rounded-full text-sm font-bold border transition-colors focus:outline-none shadow-sm flex items-baseline gap-1 ${btnClasses[3]}">
-                                <span>先々月</span><span class="text-xs font-medium opacity-80">(${sumM2.toLocaleString()}件)</span>
-                            </button>
-                            <button onclick="window.toggleTrendDataset(4)" id="legend-btn-4" class="px-4 py-1.5 rounded-full text-sm font-bold border transition-colors focus:outline-none shadow-sm flex items-baseline gap-1 ${btnClasses[4]}">
-                                <span>昨年同月</span><span class="text-xs font-medium opacity-80">(${sumM12.toLocaleString()}件)</span>
-                            </button>
+                            ${legendHtml}
                         </div>
                     </div>
                     <div style="position: relative; height: 500px; width: 100%;">
@@ -1823,91 +2131,14 @@
             chartInstances['trend'] = new Chart(canvas, {
                 type: 'bar',
                 data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: '当月実績',
-                            data: dataM0_actual,
-                            backgroundColor: '#2563eb', // blue-600
-                            order: 5,
-                            hidden: !trendDatasetVisibility[0],
-                            datalabels: {
-                                display: function(context) {
-                                    return context.dataset.data[context.dataIndex] > 0;
-                                },
-                                align: 'top',
-                                anchor: 'end',
-                                color: '#1e3a8a',
-                                font: { weight: 'bold', size: 10 },
-                                formatter: Math.round
-                            }
-                        },
-                        {
-                            label: '当月予測',
-                            data: dataM0_predict,
-                            backgroundColor: '#bfdbfe', // blue-200
-                            order: 5,
-                            hidden: !trendDatasetVisibility[1],
-                            datalabels: {
-                                display: function(context) {
-                                    return context.dataset.data[context.dataIndex] > 0;
-                                },
-                                align: 'top',
-                                anchor: 'end',
-                                color: '#3b82f6',
-                                font: { weight: 'bold', size: 10 },
-                                formatter: Math.round
-                            }
-                        },
-                        {
-                            label: '先月',
-                            data: dataM1,
-                            type: 'line',
-                            borderColor: '#f59e0b', // orange-500
-                            backgroundColor: '#f59e0b',
-                            borderWidth: 2,
-                            pointRadius: 2,
-                            fill: false,
-                            tension: 0.1,
-                            order: 1,
-                            hidden: !trendDatasetVisibility[2],
-                            datalabels: { display: false }
-                        },
-                        {
-                            label: '先々月',
-                            data: dataM2,
-                            type: 'line',
-                            borderColor: '#10b981', // emerald-500
-                            backgroundColor: '#10b981',
-                            borderWidth: 2,
-                            pointRadius: 2,
-                            fill: false,
-                            tension: 0.1,
-                            order: 2,
-                            hidden: !trendDatasetVisibility[3],
-                            datalabels: { display: false }
-                        },
-                        {
-                            label: '昨年同月',
-                            data: dataM12,
-                            type: 'line',
-                            borderColor: '#8b5cf6', // purple-500
-                            backgroundColor: '#8b5cf6',
-                            borderWidth: 2,
-                            pointRadius: 2,
-                            fill: false,
-                            tension: 0.1,
-                            order: 3,
-                            hidden: !trendDatasetVisibility[4],
-                            datalabels: { display: false }
-                        }
-                    ]
+                    labels: chartLabels,
+                    datasets: chartDatasets
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     layout: {
-                        padding: { top: 20 }
+                        padding: { top: 30 }
                     },
                     interaction: {
                         mode: 'index',
@@ -1916,13 +2147,18 @@
                     scales: {
                         x: {
                             stacked: true, 
+                            grid: { display: false, drawBorder: false },
+                            ticks: { color: '#6b7280' }
                         },
                         y: {
                             beginAtZero: true,
+                            grid: { color: '#f3f4f6', borderDash: [5, 5], drawBorder: false },
                             title: {
                                 display: true,
-                                text: '応募数'
-                            }
+                                text: '応募数',
+                                color: '#9ca3af'
+                            },
+                            ticks: { color: '#6b7280' }
                         }
                     },
                     plugins: {
@@ -1930,6 +2166,12 @@
                             display: false // 標準凡例を非表示
                         },
                         tooltip: {
+                            backgroundColor: 'rgba(17, 24, 39, 0.9)',
+                            titleColor: '#f9fafb',
+                            bodyColor: '#f9fafb',
+                            padding: 12,
+                            cornerRadius: 8,
+                            usePointStyle: true,
                             callbacks: {
                                 label: function(context) {
                                     let label = context.dataset.label || '';
@@ -2034,17 +2276,25 @@
                                 type: 'line',
                                 borderColor: '#f97316', // orange-500
                                 backgroundColor: '#f97316',
-                                borderWidth: 2,
-                                pointRadius: 3,
+                                borderWidth: 3,
+                                pointBackgroundColor: '#ffffff',
+                                pointBorderWidth: 2,
+                                pointRadius: 4,
+                                pointHoverRadius: 6,
                                 fill: false,
                                 yAxisID: 'y-ratio',
-                                tension: 0.1,
+                                tension: 0.4,
                                 order: 1,
                                 datalabels: {
                                     display: true,
                                     align: 'top',
                                     anchor: 'center',
-                                    offset: 6,
+                                    offset: 8,
+                                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                                    borderColor: '#f97316',
+                                    borderWidth: 1,
+                                    borderRadius: 4,
+                                    padding: 4,
                                     formatter: function(value) {
                                         return value.toFixed(1) + '%';
                                     },
@@ -2058,7 +2308,10 @@
                             {
                                 label: `${targetLabel} 応募数`,
                                 data: data.targetCounts,
-                                backgroundColor: '#22c55e', // green-500
+                                backgroundColor: 'rgba(34, 197, 94, 0.85)', // green-500
+                                hoverBackgroundColor: '#22c55e',
+                                borderRadius: 4,
+                                borderSkipped: false,
                                 yAxisID: 'y-count',
                                 order: 2,
                                 datalabels: { display: false }
@@ -2066,7 +2319,10 @@
                             {
                                 label: 'ターゲット外応募数',
                                 data: data.otherCounts,
-                                backgroundColor: '#e5e7eb', // gray-200
+                                backgroundColor: 'rgba(229, 231, 235, 0.85)', // gray-200
+                                hoverBackgroundColor: '#d1d5db',
+                                borderRadius: 4,
+                                borderSkipped: false,
                                 yAxisID: 'y-count',
                                 order: 3,
                                 datalabels: { display: false }
@@ -2076,6 +2332,11 @@
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        layout: {
+                            padding: {
+                                top: 40 // データラベルが上にはみ出さないよう余白を追加
+                            }
+                        },
                         interaction: {
                             mode: 'index',
                             intersect: false,
@@ -2083,10 +2344,12 @@
                         scales: {
                             x: {
                                 stacked: true,
+                                grid: { display: false, drawBorder: false },
                                 ticks: {
                                     maxRotation: 45,
                                     minRotation: 0,
-                                    autoSkip: false
+                                    autoSkip: false,
+                                    color: '#6b7280'
                                 }
                             },
                             'y-count': {
@@ -2094,10 +2357,13 @@
                                 display: true,
                                 position: 'left',
                                 stacked: true,
+                                grid: { color: '#f3f4f6', borderDash: [5, 5], drawBorder: false },
                                 title: {
                                     display: true,
-                                    text: '応募数'
-                                }
+                                    text: '応募数',
+                                    color: '#9ca3af'
+                                },
+                                ticks: { color: '#6b7280' }
                             },
                             'y-ratio': {
                                 type: 'linear',
@@ -2110,12 +2376,27 @@
                                 },
                                 title: {
                                     display: true,
-                                    text: 'ターゲット割合 (%)'
-                                }
+                                    text: 'ターゲット割合 (%)',
+                                    color: '#9ca3af'
+                                },
+                                ticks: { color: '#6b7280' }
                             }
                         },
                         plugins: {
+                            legend: {
+                                labels: {
+                                    padding: 20, // 凡例とグラフの間に余白を追加
+                                    usePointStyle: true,
+                                    color: '#4b5563'
+                                }
+                            },
                             tooltip: {
+                                backgroundColor: 'rgba(17, 24, 39, 0.9)',
+                                titleColor: '#f9fafb',
+                                bodyColor: '#f9fafb',
+                                padding: 12,
+                                cornerRadius: 8,
+                                usePointStyle: true,
                                 callbacks: {
                                     label: function(context) {
                                         let label = context.dataset.label || '';
@@ -2279,10 +2560,14 @@
                                 currentPrefix += (i > 0 ? "|||" : "") + rVals[i];
                                 if (!pivotSubtotals[currentPrefix]) {
                                     pivotSubtotals[currentPrefix] = { total: 0, target: 0, targetSamePref: 0 };
+                                    activeCols.forEach(c => pivotSubtotals[currentPrefix][c] = 0);
                                 }
                                 pivotSubtotals[currentPrefix].total++;
                                 if (isTarget) pivotSubtotals[currentPrefix].target++;
                                 if (isSamePref) pivotSubtotals[currentPrefix].targetSamePref++;
+                                if (pivotSubtotals[currentPrefix][cVal] !== undefined) {
+                                    pivotSubtotals[currentPrefix][cVal]++;
+                                }
                             }
                         }
                     });
