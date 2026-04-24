@@ -11,6 +11,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
     <!-- ドラッグ＆ドロップのアニメーション用 (SortableJS) -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <!-- Excel出力用 (SheetJS) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -381,6 +383,12 @@
 
                 <!-- 右側：トグルと件数表示 -->
                 <div class="flex flex-wrap items-center gap-4">
+                    <!-- 全表一括エクスポートボタン -->
+                    <button id="exportAllExcelBtn" class="flex items-center bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-1.5 rounded shadow-sm hover:from-emerald-600 hover:to-teal-700 transition font-bold text-sm focus:outline-none">
+                        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        全表Excel出力
+                    </button>
+
                     <!-- トグルボタン -->
                     <div class="flex items-center bg-gray-200 rounded p-1 w-max" id="toggleContainer">
                         <button id="togglePivot" class="px-5 py-1 text-sm font-bold rounded bg-white shadow-sm text-gray-800 focus:outline-none transition">表</button>
@@ -405,7 +413,7 @@
                     <!-- ピボットエリア -->
                     <div id="pivotArea" class="flex flex-col gap-y-16"></div>
                     <!-- グラフエリア -->
-                    <div id="chartArea" class="hidden flex-col gap-y-16"></div>
+                    <div id="chartArea" class="hidden flex flex-col gap-y-16"></div>
                 </div>
 
                 <!-- ↖ 左上に戻るボタン (フローティング) -->
@@ -451,7 +459,7 @@
             "メイン画像データファイルタイトル", "サブ画像1データファイルタイトル", 
             "サブ画像2データファイルタイトル", "サブ画像3データファイルタイトル", 
             "特徴", "動画タイトル", "Indeed用求人関連タグ", "Indeed用求人タイトル",
-            "TOP画像", "画像枚数", "動画", "求人タグ数", "求人文字数"
+            "TOP画像", "画像枚数", "動画", "求人タグ数", "求人文字数", "求人タグ"
         ];
 
         const rangeConfig = {
@@ -705,6 +713,172 @@
                 if (tElem.length >= 2) formattedTime = ` ${tElem[0].padStart(2, '0')}:${tElem[1].padStart(2, '0')}`;
             }
             return formattedDate + formattedTime;
+        }
+
+        // --- テーブルからCSVを抽出してダウンロードする関数 ---
+        function exportTableToCSV(table, filename) {
+            let csv = [];
+            const rows = table.querySelectorAll('tr');
+            const grid = [];
+            for (let i = 0; i < rows.length; i++) {
+                grid.push([]);
+            }
+
+            for (let r = 0; r < rows.length; r++) {
+                let colIdx = 0;
+                const cols = rows[r].querySelectorAll('td, th');
+                
+                for (let c = 0; c < cols.length; c++) {
+                    // 結合セルによって既に埋まっているマスをスキップ
+                    while (grid[r][colIdx] !== undefined) {
+                        colIdx++;
+                    }
+                    const cell = cols[c];
+                    
+                    // ソートボタンなどの要素を除外してテキストを取得
+                    const clone = cell.cloneNode(true);
+                    const btns = clone.querySelectorAll('button');
+                    btns.forEach(b => b.remove());
+                    let text = clone.innerText.replace(/(\r\n|\n|\r)/gm, " ").replace(/\s+/g, " ").trim();
+
+                    // ダブルクォートをエスケープ
+                    text = text.replace(/"/g, '""');
+                    const val = '"' + text + '"';
+
+                    const rowspan = parseInt(cell.getAttribute('rowspan')) || 1;
+                    const colspan = parseInt(cell.getAttribute('colspan')) || 1;
+
+                    // colspan, rowspan分をグリッドに展開
+                    for (let rr = 0; rr < rowspan; rr++) {
+                        for (let cc = 0; cc < colspan; cc++) {
+                            // 最初のセル以外は空文字にして、Excelで見た時にわかりやすくする
+                            grid[r + rr][colIdx + cc] = (rr === 0 && cc === 0) ? val : '""';
+                        }
+                    }
+                    colIdx += colspan;
+                }
+            }
+
+            // CSV文字列の生成
+            for (let r = 0; r < grid.length; r++) {
+                csv.push(grid[r].join(','));
+            }
+
+            // BOM付きUTF-8としてエクスポート（Excelで文字化けしないため）
+            const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+            const blob = new Blob([bom, csv.join('\n')], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        // --- 全表を一括でExcelファイルとしてエクスポートする関数 ---
+        function exportAllToExcel() {
+            if (typeof XLSX === 'undefined') {
+                alert('Excel出力ライブラリが読み込まれていません。');
+                return;
+            }
+
+            const wb = XLSX.utils.book_new();
+            const sections = document.querySelectorAll('#pivotArea .pivot-section');
+            
+            if (sections.length === 0) {
+                return;
+            }
+
+            // 1. サマリー（集計条件）シートの作成と追加（一番左に配置される）
+            const startDateRaw = document.getElementById('filterDateStart').value;
+            const endDateRaw = document.getElementById('filterDateEnd').value;
+            const startDateStr = startDateRaw ? startDateRaw.replace(/-/g, '/') : '指定なし';
+            const endDateStr = endDateRaw ? endDateRaw.replace(/-/g, '/') : '指定なし';
+            
+            const dataCountStr = document.getElementById('dashboardDataCount').textContent || '0';
+            const dupCountStr = document.getElementById('dashboardDuplicateCount').textContent || '0';
+
+            const summaryData = [
+                ["【集計条件・サマリー】"],
+                ["集計期間", `${startDateStr} 〜 ${endDateStr}`],
+                ["総応募数", `${dataCountStr} 件`, `※同月重複を除く（重複: ${dupCountStr}件）`]
+            ];
+
+            const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+            // サマリーシートの列幅を調整
+            wsSummary['!cols'] = [{ wch: 15 }, { wch: 25 }, { wch: 40 }];
+            XLSX.utils.book_append_sheet(wb, wsSummary, "集計条件");
+
+            // 2. 各テーブルのシート作成
+            sections.forEach((section, index) => {
+                const table = section.querySelector('table');
+                if (!table) return;
+
+                // タイトルの取得
+                const titleEl = section.querySelector('h3');
+                let sheetName = titleEl ? titleEl.innerText.trim() : `Sheet${index + 1}`;
+                sheetName = sheetName.replace(/[\\/?*\[\]:]/g, '_').substring(0, 31); // 禁則文字を除去し31文字に制限
+
+                // テーブルのクローンを作成し、不要な要素（ボタン等）を削除
+                const cloneTable = table.cloneNode(true);
+                cloneTable.querySelectorAll('button').forEach(btn => btn.remove());
+                
+                // 列幅の自動調整とデータ型の明示的な指定
+                const colWidths = [];
+                cloneTable.querySelectorAll('tr').forEach((tr, rIdx) => {
+                    tr.querySelectorAll('th, td').forEach((cell, cIdx) => {
+                        const cellText = cell.innerText.trim();
+                        
+                        // 1. 列幅の計算（改行を考慮して最も長い行の文字数をベースにする）
+                        const lines = cellText.split(/\r?\n/);
+                        let maxLineLen = 0;
+                        lines.forEach(line => {
+                            // 余分な空白を除いた実質的な文字数
+                            const len = line.replace(/\s+/g, '').length;
+                            if (len > maxLineLen) maxLineLen = len;
+                        });
+                        // 1文字あたり幅2.2（全角想定）、最小6、最大30文字幅に制限
+                        const calcWidth = Math.min(Math.max(maxLineLen * 2.2, 6), 30);
+                        
+                        if (!colWidths[cIdx] || colWidths[cIdx].wch < calcWidth) {
+                            colWidths[cIdx] = { wch: calcWidth };
+                        }
+
+                        // 2. エクセルのデータ型/表示形式の調整
+                        if (cellText.endsWith('%')) {
+                            // %を含むデータは、Excel上で少数にならないよう「文字列(s)」として明示する
+                            cell.setAttribute('data-t', 's');
+                            cell.setAttribute('data-v', cellText);
+                        } else if (/^[0-9,]+$/.test(cellText)) {
+                            // カンマ区切りの数値は、「数値(n)」として明示し、Excel上で計算可能にする
+                            cell.setAttribute('data-t', 'n');
+                            cell.setAttribute('data-v', cellText.replace(/,/g, ''));
+                        }
+                    });
+                });
+                
+                // テーブルからワークシートを生成
+                const ws = XLSX.utils.table_to_sheet(cloneTable);
+                ws['!cols'] = colWidths;
+
+                // シート名の重複チェック
+                let finalSheetName = sheetName;
+                let counter = 1;
+                while (wb.SheetNames.includes(finalSheetName)) {
+                    finalSheetName = `${sheetName.substring(0, 28)}_${counter}`;
+                    counter++;
+                }
+                
+                XLSX.utils.book_append_sheet(wb, ws, finalSheetName);
+            });
+
+            // 今日の日付を取得してファイル名に付与
+            const today = new Date();
+            const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+            const filename = `年代別応募分析_${dateStr}.xlsx`;
+            
+            // Excelファイルをダウンロード
+            XLSX.writeFile(wb, filename);
         }
 
         // ==========================================
@@ -1106,6 +1280,8 @@
                 if (currentCategory === 'keyword') renderKeywordAnalysis();
             });
         }
+        
+        document.getElementById('exportAllExcelBtn').addEventListener('click', exportAllToExcel);
 
         function updateDashboard() {
             if (globalFinalData.length === 0) return;
@@ -1137,6 +1313,7 @@
             
             const dateFilterContainer = document.getElementById('dateFilterContainer');
             const baFilters = document.getElementById('baFilters');
+            const exportAllExcelBtn = document.getElementById('exportAllExcelBtn');
 
             if (currentCategory === 'before-after') {
                 dateFilterContainer.classList.add('hidden');
@@ -1146,6 +1323,7 @@
                 countLabelText.textContent = '年齢フィルター応募数:';
                 toggleContainer.classList.add('hidden');
                 duplicateNote.classList.add('hidden');
+                if (exportAllExcelBtn) exportAllExcelBtn.classList.add('hidden');
 
                 renderBeforeAfterChart();
             } else if (currentCategory === 'trend') {
@@ -1156,6 +1334,7 @@
                 countLabelText.textContent = '年齢フィルター応募数:';
                 toggleContainer.classList.add('hidden');
                 duplicateNote.classList.add('hidden');
+                if (exportAllExcelBtn) exportAllExcelBtn.classList.add('hidden');
 
                 // トレンド用の件数計算
                 const ageMin = parseInt(document.getElementById('filterAgeMin').value, 10);
@@ -1181,6 +1360,7 @@
                 countLabelText.textContent = '総応募数:';
                 toggleContainer.classList.add('hidden');
                 duplicateNote.classList.remove('hidden');
+                if (exportAllExcelBtn) exportAllExcelBtn.classList.add('hidden');
 
                 let currentDuplicateCount = 0;
                 if (globalDuplicateData && globalDuplicateData.length > 0) {
@@ -1209,6 +1389,7 @@
                 countLabelText.textContent = '総応募数:';
                 toggleContainer.classList.remove('hidden');
                 duplicateNote.classList.remove('hidden');
+                if (exportAllExcelBtn) exportAllExcelBtn.classList.remove('hidden');
                 
                 let currentDuplicateCount = 0;
                 if (globalDuplicateData && globalDuplicateData.length > 0) {
@@ -1418,25 +1599,25 @@
                 let unmatchRatioClass = "px-4 py-2 text-right font-bold border-l border-gray-200 ";
 
                 if (isOverall) {
-                    matchTargetClass += "text-blue-300 bg-gray-800";
-                    matchOtherClass += "text-blue-400 bg-gray-800";
-                    unmatchTargetClass += "text-gray-300 bg-gray-800";
-                    unmatchOtherClass += "text-gray-400 bg-gray-800";
+                    matchTargetClass += "text-emerald-800 bg-emerald-50";
+                    matchOtherClass += "text-emerald-700 bg-emerald-50";
+                    unmatchTargetClass += "text-gray-700 bg-emerald-50";
+                    unmatchOtherClass += "text-gray-600 bg-emerald-50";
                     
                     if (matchTotal > 0 && unmatchTotal > 0) {
                         if (matchRatio > unmatchRatio) {
-                            matchRatioClass += "text-orange-300 bg-gray-700";
-                            unmatchRatioClass += "text-gray-500 bg-gray-800";
+                            matchRatioClass += "text-orange-700 bg-orange-100";
+                            unmatchRatioClass += "text-gray-500 bg-emerald-50";
                         } else if (unmatchRatio > matchRatio) {
-                            unmatchRatioClass += "text-orange-300 bg-gray-700";
-                            matchRatioClass += "text-gray-500 bg-gray-800";
+                            unmatchRatioClass += "text-orange-700 bg-orange-100";
+                            matchRatioClass += "text-gray-500 bg-emerald-50";
                         } else {
-                            matchRatioClass += "text-gray-400 bg-gray-800";
-                            unmatchRatioClass += "text-gray-400 bg-gray-800";
+                            matchRatioClass += "text-gray-500 bg-emerald-50";
+                            unmatchRatioClass += "text-gray-500 bg-emerald-50";
                         }
                     } else {
-                        matchRatioClass += "text-gray-400 bg-gray-800";
-                        unmatchRatioClass += "text-gray-400 bg-gray-800";
+                        matchRatioClass += "text-gray-500 bg-emerald-50";
+                        unmatchRatioClass += "text-gray-500 bg-emerald-50";
                     }
                 } else {
                     matchTargetClass += "text-blue-600 bg-blue-50";
@@ -1461,8 +1642,8 @@
                     }
                 }
 
-                const bgClass = isOverall ? "bg-gray-800 border-b-2 border-gray-900" : "bg-white border-b hover:bg-gray-50 transition";
-                const titleClass = isOverall ? "px-4 py-2 font-extrabold text-white text-left whitespace-nowrap bg-gray-900 sticky-col-1" : "px-4 py-2 font-bold text-gray-700 text-left whitespace-nowrap bg-gray-50 sticky-col-1";
+                const bgClass = isOverall ? "bg-emerald-50 border-b-2 border-emerald-200" : "bg-white border-b hover:bg-gray-50 transition";
+                const titleClass = isOverall ? "px-4 py-2 font-extrabold text-emerald-900 text-left whitespace-nowrap bg-emerald-100 sticky-col-1 shadow-[1px_0_0_0_#a7f3d0]" : "px-4 py-2 font-bold text-gray-700 text-left whitespace-nowrap bg-gray-50 sticky-col-1";
 
                 return `
                     <tr class="${bgClass}">
@@ -2386,6 +2567,7 @@
                             <h3 class="text-2xl font-extrabold text-gray-800 flex items-center tracking-tight">
                                 <span class="w-1.5 h-7 bg-gradient-to-b from-purple-400 to-purple-600 inline-block mr-3 rounded-full shadow-sm"></span>
                                 ${result.chartData.dimLabel}
+                                ${result.chartData.joinRateHtml || ''}
                             </h3>
                         </div>
                         <div class="bg-white/80 backdrop-blur-2xl p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white/60 relative overflow-hidden">
@@ -2619,6 +2801,20 @@
         function generatePivotTableHtml(dimObj, ageMin, ageMax, mode) {
             const dimLabelDefault = dimObj.label;
             const currentDimension = dimObj.val;
+
+            // 突合率の計算とバッジ生成 (求人CSV由来の項目向け)
+            let joinRateHtml = "";
+            const targetBCols = ["給与金額MIN", "求人文字数", "TOP画像", "画像枚数", "動画", "求人タグ数", "求人タグ"];
+            if (targetBCols.includes(currentDimension)) {
+                let joinCount = 0;
+                filteredData.forEach(row => {
+                    if (Number(row["ファイルB結合フラグ"]) === 1) {
+                        joinCount++;
+                    }
+                });
+                const joinRate = filteredData.length > 0 ? ((joinCount / filteredData.length) * 100).toFixed(1) : 0;
+                joinRateHtml = `<span class="ml-4 text-sm font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-md border border-emerald-200 shadow-sm flex items-center tracking-normal"><svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>求人データ突合率: ${joinRate}%</span>`;
+            }
 
             let isCustomItem = (currentDimension === "カスタム");
             let rowDims = isCustomItem ? customPivotRowDims : [currentDimension];
@@ -3375,37 +3571,20 @@
             sectionHtml += `<h3 class="text-xl font-bold text-gray-800 flex items-center">
                 <span class="w-1.5 h-6 bg-blue-600 inline-block mr-2 rounded"></span>
                 ${dimLabelDefault}
+                ${joinRateHtml}
             </h3>`;
 
             // 右側の設定UI
             sectionHtml += `<div class="flex items-center space-x-3">`;
-            if (isCustomItem) {
-                // カスタム分析のプルダウンは表直上へ移動するためここは空
-            } else if (rangeConfig[currentDimension]) {
-                if (currentDimension === "給与金額MIN") {
-                    sectionHtml += `<div class="flex items-center space-x-2 bg-yellow-50 px-3 py-1 rounded border border-yellow-200 shadow-sm">
-                        <span class="text-sm text-gray-700 font-bold">対象区分:</span>
-                        <select class="salary-type-filter border rounded px-1 py-0.5 text-sm text-gray-700 focus:outline-none focus:border-blue-500 bg-white">
-                            <option value="時給" ${userSalaryType === '時給' ? 'selected' : ''}>時給</option>
-                            <option value="日給" ${userSalaryType === '日給' ? 'selected' : ''}>日給</option>
-                            <option value="月給" ${userSalaryType === '月給' ? 'selected' : ''}>月給</option>
-                            <option value="年俸" ${userSalaryType === '年俸' ? 'selected' : ''}>年俸</option>
-                            <option value="年収" ${userSalaryType === '年収' ? 'selected' : ''}>年収</option>
-                            <option value="完全歩合制" ${userSalaryType === '完全歩合制' ? 'selected' : ''}>完全歩合制</option>
-                        </select>
-                        <span class="text-sm text-gray-700 font-bold ml-3">まとめる単位:</span>
-                        <input type="number" class="salary-range-input border rounded px-1 py-0.5 text-sm w-16 focus:outline-none focus:border-blue-500" value="${userSalaryInterval || rangeConfig[currentDimension].default}">
-                        <span class="text-sm text-gray-600">円</span>
-                    </div>`;
-                } else {
-                    sectionHtml += `<div class="flex items-center space-x-2 bg-yellow-50 px-3 py-1 rounded border border-yellow-200 shadow-sm">
-                        <span class="text-sm text-gray-700 font-bold">まとめる単位:</span>
-                        <input type="number" class="general-range-input border rounded px-1 py-0.5 text-sm w-16 focus:outline-none focus:border-blue-500" data-dim="${currentDimension}" value="${userRangeSettings[currentDimension] || rangeConfig[currentDimension].default}">
-                        <span class="text-sm text-gray-600">${rangeConfig[currentDimension].unit}</span>
-                    </div>`;
-                }
-            }
-            sectionHtml += `</div></div>`;
+
+            // CSVエクスポートボタン
+            sectionHtml += `
+            <button class="export-csv-btn flex items-center text-sm font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded shadow-sm transition focus:outline-none" data-dim="${currentDimension}" title="この表をCSVでダウンロード">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                CSV出力
+            </button>
+            </div>
+            </div>`;
 
             if (isCustomItem) {
                 let rowTagsHtml = "";
@@ -3483,6 +3662,7 @@
                 chartData: {
                     dimId: currentDimension,
                     dimLabel: dimLabelDefault,
+                    joinRateHtml: joinRateHtml,
                     labels: chartLabels,
                     targetCounts: chartTargetCounts,
                     otherCounts: chartOtherCounts,
@@ -3563,6 +3743,18 @@
                     let newDim = available.length > 0 ? available[0] : customDims[0].val;
                     customPivotRowDims.push(newDim);
                     renderAllPivots();
+                });
+            });
+
+            // CSVエクスポート処理
+            document.querySelectorAll('.export-csv-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const dim = e.currentTarget.getAttribute('data-dim');
+                    const section = document.getElementById(`section-${dim}`);
+                    if (!section) return;
+                    const table = section.querySelector('table');
+                    if (!table) return;
+                    exportTableToCSV(table, `集計表_${dim}.csv`);
                 });
             });
 
