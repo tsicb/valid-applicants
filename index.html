@@ -16,6 +16,9 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <!-- Excel出力用 (SheetJS) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- PowerPoint出力用 (PptxGenJS) -->
+    <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/libs/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.min.js"></script>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -136,6 +139,36 @@
                     </button>
                     <p class="text-xs text-gray-500 mt-3 flex items-center"><svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> データ集計を実行後にダウンロード可能になります。</p>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- エクスポート項目選択モーダル -->
+    <div id="exportModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 relative transform transition-all border border-gray-100 flex flex-col max-h-[90vh]">
+            <button id="closeExportModalBtn" class="absolute top-5 right-5 text-gray-400 hover:text-gray-700 bg-gray-50 hover:bg-gray-200 rounded-full p-2 focus:outline-none transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <h2 class="text-2xl font-extrabold text-gray-800 mb-2 flex items-center" id="exportModalTitle">
+                出力項目の選択
+            </h2>
+            <p class="text-gray-500 text-sm mb-4">出力ファイルに含めたいデータ項目を選択してください。</p>
+            
+            <div class="flex items-center space-x-3 mb-3">
+                <button id="exportSelectAllBtn" class="text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded transition">すべて選択</button>
+                <button id="exportDeselectAllBtn" class="text-xs font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded transition">すべて解除</button>
+            </div>
+
+            <!-- チェックボックスリスト表示エリア -->
+            <div class="overflow-y-auto flex-1 border border-gray-200 rounded-lg p-4 bg-gray-50 mb-6 custom-scrollbar" id="exportChecklistContainer">
+                <!-- ここに動的にチェックボックスが追加される -->
+            </div>
+
+            <div class="flex justify-end space-x-3 mt-auto shrink-0">
+                <button id="cancelExportBtn" class="px-5 py-2.5 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition focus:outline-none">キャンセル</button>
+                <button id="executeExportBtn" class="px-6 py-2.5 rounded-xl font-bold text-white transition flex items-center shadow-md focus:outline-none">
+                    実行
+                </button>
             </div>
         </div>
     </div>
@@ -390,6 +423,12 @@
                     <button id="exportAllExcelBtn" class="flex items-center bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-1.5 rounded shadow-sm hover:from-emerald-600 hover:to-teal-700 transition font-bold text-sm focus:outline-none">
                         <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                         全表Excel出力
+                    </button>
+                    
+                    <!-- 全表PPT出力ボタン -->
+                    <button id="exportAllPptxBtn" class="flex items-center bg-gradient-to-r from-orange-500 to-red-600 text-white px-4 py-1.5 rounded shadow-sm hover:from-orange-600 hover:to-red-700 transition font-bold text-sm focus:outline-none">
+                        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                        全表PPT出力
                     </button>
 
                     <!-- トグルボタン -->
@@ -778,19 +817,87 @@
             window.URL.revokeObjectURL(url);
         }
 
-        // --- 全表を一括でExcelファイルとしてエクスポートする関数 ---
-        function exportAllToExcel() {
+        // --- エクスポートモーダルの制御 ---
+        let currentExportType = ''; // 'excel' or 'pptx'
+        const exportModal = document.getElementById('exportModal');
+        const exportChecklistContainer = document.getElementById('exportChecklistContainer');
+        
+        function openExportModal(type) {
+            currentExportType = type;
+            const sections = document.querySelectorAll('#pivotArea .pivot-section');
+            if (sections.length === 0) return;
+
+            let html = '<div class="space-y-2">';
+            sections.forEach((section, index) => {
+                const titleEl = section.querySelector('h3');
+                let rawTitle = titleEl ? titleEl.innerText.trim() : `分析データ ${index + 1}`;
+                let title = rawTitle.replace(/\n求人データ突合率.*/g, ""); 
+                
+                html += `
+                    <label class="flex items-center p-2 rounded hover:bg-white transition cursor-pointer border border-transparent hover:border-gray-200 shadow-sm">
+                        <input type="checkbox" value="${section.id}" class="export-checkbox w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 mr-3" checked>
+                        <span class="font-medium text-gray-700">${title}</span>
+                    </label>
+                `;
+            });
+            html += '</div>';
+            exportChecklistContainer.innerHTML = html;
+
+            const executeBtn = document.getElementById('executeExportBtn');
+            const titleEl = document.getElementById('exportModalTitle');
+            if (type === 'excel') {
+                titleEl.innerHTML = `<svg class="w-6 h-6 mr-2 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> Excel出力項目の選択`;
+                executeBtn.className = "px-6 py-2.5 rounded-xl font-bold text-white transition flex items-center shadow-md bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700";
+                executeBtn.innerHTML = `Excelを出力`;
+            } else {
+                titleEl.innerHTML = `<svg class="w-6 h-6 mr-2 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg> PowerPoint出力項目の選択`;
+                executeBtn.className = "px-6 py-2.5 rounded-xl font-bold text-white transition flex items-center shadow-md bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700";
+                executeBtn.innerHTML = `PPTを出力`;
+            }
+
+            exportModal.classList.remove('hidden');
+        }
+
+        document.getElementById('closeExportModalBtn').addEventListener('click', () => exportModal.classList.add('hidden'));
+        document.getElementById('cancelExportBtn').addEventListener('click', () => exportModal.classList.add('hidden'));
+        exportModal.addEventListener('click', (e) => { if (e.target === exportModal) exportModal.classList.add('hidden'); });
+
+        document.getElementById('exportSelectAllBtn').addEventListener('click', () => {
+            document.querySelectorAll('.export-checkbox').forEach(cb => cb.checked = true);
+        });
+        document.getElementById('exportDeselectAllBtn').addEventListener('click', () => {
+            document.querySelectorAll('.export-checkbox').forEach(cb => cb.checked = false);
+        });
+
+        document.getElementById('executeExportBtn').addEventListener('click', () => {
+            const selectedIds = Array.from(document.querySelectorAll('.export-checkbox:checked')).map(cb => cb.value);
+            if (selectedIds.length === 0) {
+                alert('出力する項目を1つ以上選択してください。');
+                return;
+            }
+            exportModal.classList.add('hidden');
+            
+            // 選択されたセクションだけを抽出して出力関数へ渡す
+            const selectedSections = Array.from(document.querySelectorAll('#pivotArea .pivot-section'))
+                .filter(sec => selectedIds.includes(sec.id));
+
+            if (currentExportType === 'excel') {
+                executeExcelExport(selectedSections);
+            } else {
+                executePptxExport(selectedSections);
+            }
+        });
+
+        // --- 選択された表をExcelファイルとしてエクスポートする関数 ---
+        function executeExcelExport(sections) {
             if (typeof XLSX === 'undefined') {
                 alert('Excel出力ライブラリが読み込まれていません。');
                 return;
             }
 
             const wb = XLSX.utils.book_new();
-            const sections = document.querySelectorAll('#pivotArea .pivot-section');
             
-            if (sections.length === 0) {
-                return;
-            }
+            if (sections.length === 0) return;
 
             // 1. サマリー（集計条件）シートの作成と追加（一番左に配置される）
             const startDateRaw = document.getElementById('filterDateStart').value;
@@ -812,7 +919,7 @@
             wsSummary['!cols'] = [{ wch: 15 }, { wch: 25 }, { wch: 40 }];
             XLSX.utils.book_append_sheet(wb, wsSummary, "集計条件");
 
-            // 2. 各テーブルのシート作成
+            // 2. 選択された各テーブルのシート作成
             sections.forEach((section, index) => {
                 const table = section.querySelector('table');
                 if (!table) return;
@@ -882,6 +989,166 @@
             
             // Excelファイルをダウンロード
             XLSX.writeFile(wb, filename);
+        }
+
+        // --- 選択された表をPowerPointファイルとしてエクスポートする関数 ---
+        async function executePptxExport(sections) {
+            if (typeof PptxGenJS === 'undefined') {
+                alert('PowerPoint出力ライブラリが読み込まれていません。');
+                return;
+            }
+
+            const pptxBtn = document.getElementById('exportAllPptxBtn');
+            const originalText = pptxBtn.innerHTML;
+            pptxBtn.innerHTML = '<svg class="animate-spin w-4 h-4 mr-1.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> 出力中...';
+            pptxBtn.disabled = true;
+
+            setTimeout(() => {
+                try {
+                    const pptx = new PptxGenJS();
+                    pptx.layout = 'LAYOUT_16x9';
+                    
+                    // 1. サマリー（集計条件）スライド
+                    const startDateRaw = document.getElementById('filterDateStart').value;
+                    const endDateRaw = document.getElementById('filterDateEnd').value;
+                    const startDateStr = startDateRaw ? startDateRaw.replace(/-/g, '/') : '指定なし';
+                    const endDateStr = endDateRaw ? endDateRaw.replace(/-/g, '/') : '指定なし';
+                    const dataCountStr = document.getElementById('dashboardDataCount').textContent || '0';
+                    const dupCountStr = document.getElementById('dashboardDuplicateCount').textContent || '0';
+
+                    let slideSummary = pptx.addSlide();
+                    slideSummary.addText("集計条件・サマリー", { x: 0.5, y: 0.5, w: 8, h: 1, fontSize: 24, bold: true, color: '363636' });
+                    
+                    const summaryRows = [
+                        [{ text: "集計期間", options: { fill: 'f3f4f6', bold: true } }, `${startDateStr} 〜 ${endDateStr}`],
+                        [{ text: "総応募数", options: { fill: 'f3f4f6', bold: true } }, `${dataCountStr} 件 ※同月重複を除く（重複: ${dupCountStr}件）`]
+                    ];
+                    slideSummary.addTable(summaryRows, { x: 0.5, y: 1.5, w: 8, colW: [2, 6], border: { type: 'solid', color: 'cccccc' }, fontSize: 14 });
+                    
+                    if (sections.length === 0) {
+                        pptxBtn.innerHTML = originalText;
+                        pptxBtn.disabled = false;
+                        return;
+                    }
+
+                    sections.forEach((section, index) => {
+                        const table = section.querySelector('table');
+                        if (!table) return;
+
+                        const titleEl = section.querySelector('h3');
+                        let rawTitle = titleEl ? titleEl.innerText.trim() : `分析データ ${index + 1}`;
+                        let title = rawTitle.replace(/\n求人データ突合率.*/g, ""); 
+
+                        const dimId = section.id.replace('section-', '');
+
+                        // -- 表スライド --
+                        let slideTable = pptx.addSlide();
+                        slideTable.addText(title + " - データ表", { x: 0.5, y: 0.3, w: 9, h: 0.6, fontSize: 18, bold: true, color: '1e3a8a' });
+
+                        const grid = [];
+                        const rows = table.querySelectorAll('tr');
+                        for (let i = 0; i < rows.length; i++) grid.push([]);
+
+                        for (let r = 0; r < rows.length; r++) {
+                            let colIdx = 0;
+                            const cols = rows[r].querySelectorAll('td, th');
+                            
+                            for (let c = 0; c < cols.length; c++) {
+                                while (grid[r][colIdx] !== undefined) {
+                                    colIdx++;
+                                }
+                                const cell = cols[c];
+                                
+                                const clone = cell.cloneNode(true);
+                                clone.querySelectorAll('button').forEach(b => b.remove());
+                                let text = clone.innerText.replace(/(\r\n|\n|\r)/gm, " ").replace(/\s+/g, " ").trim();
+
+                                const isHeader = cell.tagName.toLowerCase() === 'th';
+                                const isTotal = text.includes('【総計】') || text.includes('全体中割合');
+                                
+                                let fillCol = 'ffffff';
+                                let textCol = '333333';
+                                if (isHeader) fillCol = 'f1f5f9';
+                                if (isHeader && r === 0) fillCol = 'e2e8f0'; 
+                                if (isTotal) fillCol = 'f8fafc';
+                                
+                                if (cell.classList.contains('bg-green-100') || cell.classList.contains('bg-green-50')) {
+                                    fillCol = 'dcfce7'; textCol = '166534';
+                                } else if (cell.classList.contains('bg-orange-100') || cell.classList.contains('bg-orange-50')) {
+                                    fillCol = 'ffedd5'; textCol = '9a3412';
+                                } else if (cell.classList.contains('bg-blue-100') || cell.classList.contains('bg-blue-50')) {
+                                    fillCol = 'dbeafe'; textCol = '1e40af';
+                                } else if (cell.classList.contains('bg-purple-100') || cell.classList.contains('bg-purple-50')) {
+                                    fillCol = 'f3e8ff'; textCol = '6b21a8';
+                                } else if (cell.classList.contains('bg-cyan-100') || cell.classList.contains('bg-cyan-50')) {
+                                    fillCol = 'cffafe'; textCol = '155e75';
+                                } else if (cell.classList.contains('bg-teal-100') || cell.classList.contains('bg-teal-50')) {
+                                    fillCol = 'ccfbf1'; textCol = '115e59';
+                                }
+
+                                const cellData = {
+                                    text: text,
+                                    options: {
+                                        fill: fillCol,
+                                        color: textCol,
+                                        bold: isHeader || isTotal,
+                                        valign: 'middle',
+                                        align: isHeader ? 'center' : (text.match(/^[0-9,%.]+$/) ? 'right' : 'left'),
+                                        margin: 2
+                                    }
+                                };
+
+                                const rowspan = parseInt(cell.getAttribute('rowspan')) || 1;
+                                const colspan = parseInt(cell.getAttribute('colspan')) || 1;
+
+                                for (let rr = 0; rr < rowspan; rr++) {
+                                    for (let cc = 0; cc < colspan; cc++) {
+                                        const clonedData = { ...cellData, text: (rr === 0 && cc === 0) ? text : "" };
+                                        grid[r + rr][colIdx + cc] = clonedData;
+                                    }
+                                }
+                                colIdx += colspan;
+                            }
+                        }
+
+                        slideTable.addTable(grid, { 
+                            x: 0.2, y: 1.0, w: 9.6, 
+                            border: { type: 'solid', color: 'cbd5e1', pt: 1 }, 
+                            fontSize: 8, 
+                            autoPage: true 
+                        });
+
+                        // -- グラフスライド --
+                        if (chartInstances[dimId]) {
+                            let slideChart = pptx.addSlide();
+                            slideChart.addText(title + " - グラフ", { x: 0.5, y: 0.3, w: 9, h: 0.6, fontSize: 18, bold: true, color: '1e3a8a' });
+                            
+                            try {
+                                const imgData = chartInstances[dimId].toBase64Image();
+                                slideChart.addImage({ data: imgData, x: 0.5, y: 1.2, w: 9, h: 4.0, sizing: { type: 'contain', w: 9, h: 4.0 } });
+                            } catch(e) {
+                                console.warn("グラフ画像の取得に失敗:", dimId, e);
+                                slideChart.addText("グラフの出力に失敗しました", { x: 0.5, y: 2.0, color: 'ff0000' });
+                            }
+                        }
+                    });
+
+                    const today = new Date();
+                    const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+                    const filename = `年代別応募分析_レポート_${dateStr}.pptx`;
+                    
+                    pptx.writeFile({ fileName: filename }).then(() => {
+                        pptxBtn.innerHTML = originalText;
+                        pptxBtn.disabled = false;
+                    });
+
+                } catch (err) {
+                    console.error(err);
+                    alert("PowerPoint出力中にエラーが発生しました。\n" + err.message);
+                    pptxBtn.innerHTML = originalText;
+                    pptxBtn.disabled = false;
+                }
+            }, 100);
         }
 
         // ==========================================
@@ -1284,7 +1551,8 @@
             });
         }
         
-        document.getElementById('exportAllExcelBtn').addEventListener('click', exportAllToExcel);
+        document.getElementById('exportAllExcelBtn').addEventListener('click', () => openExportModal('excel'));
+        document.getElementById('exportAllPptxBtn').addEventListener('click', () => openExportModal('pptx'));
 
         function updateDashboard() {
             if (globalFinalData.length === 0) return;
@@ -1317,6 +1585,7 @@
             const dateFilterContainer = document.getElementById('dateFilterContainer');
             const baFilters = document.getElementById('baFilters');
             const exportAllExcelBtn = document.getElementById('exportAllExcelBtn');
+            const exportAllPptxBtn = document.getElementById('exportAllPptxBtn');
 
             if (currentCategory === 'before-after') {
                 dateFilterContainer.classList.add('hidden');
@@ -1327,6 +1596,7 @@
                 toggleContainer.classList.add('hidden');
                 duplicateNote.classList.add('hidden');
                 if (exportAllExcelBtn) exportAllExcelBtn.classList.add('hidden');
+                if (exportAllPptxBtn) exportAllPptxBtn.classList.add('hidden');
 
                 renderBeforeAfterChart();
             } else if (currentCategory === 'trend') {
@@ -1338,6 +1608,7 @@
                 toggleContainer.classList.add('hidden');
                 duplicateNote.classList.add('hidden');
                 if (exportAllExcelBtn) exportAllExcelBtn.classList.add('hidden');
+                if (exportAllPptxBtn) exportAllPptxBtn.classList.add('hidden');
 
                 // トレンド用の件数計算
                 const ageMin = parseInt(document.getElementById('filterAgeMin').value, 10);
@@ -1364,6 +1635,7 @@
                 toggleContainer.classList.add('hidden');
                 duplicateNote.classList.remove('hidden');
                 if (exportAllExcelBtn) exportAllExcelBtn.classList.add('hidden');
+                if (exportAllPptxBtn) exportAllPptxBtn.classList.add('hidden');
 
                 let currentDuplicateCount = 0;
                 if (globalDuplicateData && globalDuplicateData.length > 0) {
@@ -1393,6 +1665,7 @@
                 toggleContainer.classList.remove('hidden');
                 duplicateNote.classList.remove('hidden');
                 if (exportAllExcelBtn) exportAllExcelBtn.classList.remove('hidden');
+                if (exportAllPptxBtn) exportAllPptxBtn.classList.remove('hidden');
                 
                 let currentDuplicateCount = 0;
                 if (globalDuplicateData && globalDuplicateData.length > 0) {
