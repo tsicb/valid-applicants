@@ -116,18 +116,6 @@
                     </select>
                 </div>
                 
-                <!-- 結合キーA -->
-                <div>
-                    <label class="block font-bold text-sm text-gray-700 mb-2">応募CSV 結合キー列名</label>
-                    <input type="text" id="keyA" value="仕事番号" class="border border-gray-300 p-2.5 rounded-lg w-full text-sm bg-gray-50 focus:bg-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all">
-                </div>
-
-                <!-- 結合キーB -->
-                <div>
-                    <label class="block font-bold text-sm text-gray-700 mb-2">求人CSV 結合キー列名</label>
-                    <input type="text" id="keyB" value="仕事番号" class="border border-gray-300 p-2.5 rounded-lg w-full text-sm bg-gray-50 focus:bg-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all">
-                </div>
-
                 <hr class="border-gray-200">
 
                 <!-- CSVダウンロード -->
@@ -138,6 +126,16 @@
                         CSVをダウンロード
                     </button>
                     <p class="text-xs text-gray-500 mt-3 flex items-center"><svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> データ集計を実行後にダウンロード可能になります。</p>
+                </div>
+
+                <hr class="border-gray-200">
+
+                <!-- 関連リンク -->
+                <div class="text-center pb-2">
+                    <a href="https://docs.google.com/spreadsheets/d/16IJTBXU6p6emrAbJMqnW3ZHl_KpEybTR8IACfS1ZSto/" target="_blank" rel="noopener noreferrer" class="text-sm font-bold text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center transition-colors">
+                        🌻有効応募分析（スプレッドシート版）
+                        <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                    </a>
                 </div>
             </div>
         </div>
@@ -1092,8 +1090,8 @@
         document.getElementById('runBtn').addEventListener('click', async () => {
             const filesA = document.getElementById('fileA').files;
             const filesB = document.getElementById('fileB').files;
-            const keyNameA = document.getElementById('keyA').value.trim();
-            const keyNameB = document.getElementById('keyB').value.trim();
+            const keyNameA = "仕事番号"; // 固定キーに変更
+            const keyNameB = "仕事番号"; // 固定キーに変更
             const encoding = document.getElementById('encoding').value;
             const msgEl = document.getElementById('message');
             
