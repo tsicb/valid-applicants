@@ -745,7 +745,13 @@
             let formattedTime = "";
             if (parts.length > 1) {
                 const tElem = parts[1].split(":");
-                if (tElem.length >= 2) formattedTime = ` ${tElem[0].padStart(2, '0')}:${tElem[1].padStart(2, '0')}`;
+                // HH:MM:SS まで出力する。元データに秒が無い場合は 00 秒として補完する。
+                if (tElem.length >= 2) {
+                    const hh = tElem[0].padStart(2, '0');
+                    const mm = tElem[1].padStart(2, '0');
+                    const ss = (tElem.length >= 3 ? tElem[2] : "00").padStart(2, '0').slice(0, 2);
+                    formattedTime = ` ${hh}:${mm}:${ss}`;
+                }
             }
             return formattedDate + formattedTime;
         }
