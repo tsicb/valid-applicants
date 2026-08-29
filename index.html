@@ -263,12 +263,12 @@
                         <div id="imageLookupTestStatus" class="hidden mt-4 text-xs rounded-xl bg-white border border-sky-100 p-3 text-gray-700 whitespace-pre-wrap"></div>
                     </div>
 
-                    <!-- Phase 2: API GAS接続前のpayload v2確認 -->
+                    <!-- Phase 2: API GAS接続前の正規化payload v3確認 -->
                     <div id="sheetsPayloadTestArea" class="w-full max-w-2xl rounded-2xl border border-violet-200 bg-violet-50/70 p-5">
                         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                             <div>
-                                <div class="font-extrabold text-violet-900 text-sm">開発確認：Google Sheets送信データ v2</div>
-                                <div class="text-xs text-violet-700 mt-1">API GASへ送る直前のデータ構造と容量を確認します。</div>
+                                <div class="font-extrabold text-violet-900 text-sm">開発確認：Google Sheets送信データ v3（正規化）</div>
+                                <div class="text-xs text-violet-700 mt-1">応募データと求人データを分離した送信構造と、データセット別容量を確認します。</div>
                             </div>
                             <button id="sheetsPayloadTestBtn" class="shrink-0 px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed">
                                 送信データを確認
@@ -1189,310 +1189,582 @@
         }
 
 
-        // ==========================================
-        // Google Sheets連携用 payload v2
-        // ==========================================
-        const SHEETS_SCHEMA_VERSION = "2.0";
-        const SHEETS_APP_VERSION = "2026.08.29-pages-payload-v2";
 
-        const APPLICATION_JOIN_HEADERS = [
-            "レコードID", "企業ID", "仕事番号", "求人管理番号", "公開情報区分",
-            "求人データ突合フラグ", "応募日時", "応募年月", "応募日", "応募曜日",
-            "応募時間帯", "応募数", "対応状況", "応募媒体", "年齢", "年代",
-            "氏名文字種区分", "メールドメイン", "居住都道府県",
-            "勤務地・居住都道府県一致", "仕事名", "Indeed用求人タイトル",
-            "職種", "雇用形態", "募集背景", "求人勤務地名称", "勤務地住所",
-            "勤務地都道府県", "最寄駅", "仕事内容", "求人備考", "雇用形態備考",
-            "給与区分コード", "給与区分", "給与金額MIN", "給与金額MAX", "給与備考",
-            "月収例", "年収例", "勤務時間", "休日・休暇", "キャッチコピー",
-            "インフォメーション", "アピールポイント", "醍醐味", "厳しさ",
-            "こんな人が活躍", "待遇・福利厚生", "応募資格", "選考手順",
-            "面接地住所", "メイン画像ファイル名", "サブ画像1ファイル名",
-            "サブ画像2ファイル名", "サブ画像3ファイル名", "メイン画像あり",
-            "求人画像枚数", "動画タイトル", "求人動画あり", "特徴コード", "特徴",
-            "Indeed求人タグコード", "Indeed求人タグ", "Indeed求人タグ数",
-            "求人原稿文字数"
-        ];
+// ==========================================
+// Google Sheets連携用 payload v3（正規化）
+// ==========================================
+// v2では応募1行ごとに求人本文・待遇等を重複保持していたため、
+// 実データで100MB超のpayloadになった。
+//
+// v3では以下の3層へ分離する。
+// 1. applicationData      : 1応募1行。求人参照IDだけを持つ。
+// 2. jobAnalysisMaster    : JOINに実際に使われた求人を1求人1行で保持。
+// 3. jobSnapshot          : アップロード求人CSV全行の軽量スナップショット。
+//
+// Pages側のJOIN結果を求人参照IDへ変換するため、
+// API GAS側で元CSVのJOINロジックを再現する必要はない。
+const SHEETS_SCHEMA_VERSION = "3.0";
+const SHEETS_APP_VERSION = "2026.08.29-pages-payload-v3-normalized";
 
-        const JOB_SNAPSHOT_CANDIDATE_HEADERS = [
-            "企業ID", "企業コード", "仕事番号", "求人管理番号", "公開情報区分",
-            "仕事名", "Indeed用求人タイトル", "職種", "雇用形態", "募集背景",
-            "求人勤務地名称", "勤務地1", "勤務地都道府県", "最寄駅1", "仕事内容",
-            "求人備考", "雇用形態備考", "給与区分", "給与金額MIN", "給与金額MAX",
-            "給与備考", "月収例", "年収例", "勤務時間", "休日・休暇",
-            "キャッチコピー", "インフォメーション", "アピールポイント", "醍醐味",
-            "厳しさ", "こんな人が活躍", "待遇・福利厚生", "応募資格", "選考手順",
-            "面接地住所", "メイン画像データファイルタイトル",
-            "サブ画像1データファイルタイトル", "サブ画像2データファイルタイトル",
-            "サブ画像3データファイルタイトル", "動画タイトル", "特徴",
-            "Indeed用求人関連タグ"
-        ];
+const APPLICATION_DATA_HEADERS = [
+    "レコードID",
+    "企業ID",
+    "仕事番号",
+    "求人参照ID",
+    "求人データ突合フラグ",
+    "応募日時",
+    "応募年月",
+    "応募日",
+    "応募曜日",
+    "応募時間帯",
+    "応募数",
+    "対応状況",
+    "応募媒体",
+    "年齢",
+    "年代",
+    "氏名文字種区分",
+    "メールドメイン",
+    "居住都道府県",
+    "勤務地・居住都道府県一致"
+];
 
-        function makeRequestId() {
-            if (window.crypto?.randomUUID) return crypto.randomUUID();
-            return `req-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+// 初回のSheet分析で実際に参照する求人属性だけを保持する。
+// 求人備考は「求人備考1行目」分析のために残す。
+// 仕事内容・待遇・PR本文等の長文は、現行分析では原文を使わないため送信しない。
+const JOB_ANALYSIS_HEADERS = [
+    "求人参照ID",
+    "企業ID",
+    "仕事番号",
+    "求人管理番号",
+    "公開情報区分",
+    "仕事名",
+    "Indeed用求人タイトル",
+    "職種",
+    "雇用形態",
+    "募集背景",
+    "求人勤務地名称",
+    "勤務地住所",
+    "勤務地都道府県",
+    "最寄駅",
+    "求人備考",
+    "給与区分コード",
+    "給与区分",
+    "給与金額MIN",
+    "給与金額MAX",
+    "メイン画像ファイル名",
+    "メイン画像あり",
+    "求人画像枚数",
+    "動画タイトル",
+    "求人動画あり",
+    "特徴コード",
+    "特徴",
+    "Indeed求人タグコード",
+    "Indeed求人タグ",
+    "Indeed求人タグ数",
+    "求人原稿文字数"
+];
+
+// 求人CSVスナップショットは、将来のゼロ応募求人等の拡張を見据えつつ、
+// 長文本文を除いた「分析に使える軽量列」に限定する。
+const JOB_SNAPSHOT_HEADERS = [
+    "企業ID",
+    "仕事番号",
+    "求人管理番号",
+    "公開情報区分",
+    "仕事名",
+    "Indeed用求人タイトル",
+    "職種",
+    "雇用形態",
+    "募集背景",
+    "求人勤務地名称",
+    "勤務地住所",
+    "勤務地都道府県",
+    "最寄駅",
+    "給与区分コード",
+    "給与区分",
+    "給与金額MIN",
+    "給与金額MAX",
+    "メイン画像ファイル名",
+    "メイン画像あり",
+    "求人画像枚数",
+    "動画タイトル",
+    "求人動画あり",
+    "特徴コード",
+    "特徴",
+    "Indeed求人タグコード",
+    "Indeed求人タグ",
+    "Indeed求人タグ数",
+    "求人原稿文字数"
+];
+
+const JOB_TEXT_LENGTH_SOURCE_HEADERS = [
+    "仕事内容",
+    "職種",
+    "雇用形態",
+    "求人勤務地名称",
+    "勤務地1",
+    "最寄駅1",
+    "雇用形態備考",
+    "キャッチコピー",
+    "インフォメーション",
+    "勤務時間",
+    "休日・休暇",
+    "給与備考",
+    "月収例",
+    "年収例",
+    "待遇・福利厚生",
+    "応募資格",
+    "選考手順",
+    "面接地住所",
+    "アピールポイント",
+    "醍醐味",
+    "厳しさ",
+    "こんな人が活躍",
+    "特徴"
+];
+
+function makeRequestId() {
+    if (window.crypto?.randomUUID) return crypto.randomUUID();
+    return `req-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function mapNameCharacterClass(value) {
+    if (value === "日本人名") return "漢字を含む";
+    if (value === "外国人名") return "漢字を含まない";
+    return normalizeString(value);
+}
+
+function normalizeMailDomain(value) {
+    return normalizeString(value).replace(/^@/, "").toLowerCase();
+}
+
+function getEnterpriseIdFromRow(row) {
+    return normalizeString(row?.["企業コード"] ?? row?.["企業ID"]);
+}
+
+function buildJoinedJobKey(row) {
+    const enterpriseId = getEnterpriseIdFromRow(row).toUpperCase();
+    const jobNo = preprocessKey(row?.["仕事番号"]);
+    if (!enterpriseId && !jobNo) return "";
+    return `${enterpriseId}_${jobNo}`;
+}
+
+function countImagesFromRawJob(row) {
+    let count = 0;
+    if (normalizeString(row?.["メイン画像データファイルタイトル"])) count++;
+    if (normalizeString(row?.["サブ画像1データファイルタイトル"])) count++;
+    if (normalizeString(row?.["サブ画像2データファイルタイトル"])) count++;
+    if (normalizeString(row?.["サブ画像3データファイルタイトル"])) count++;
+    return count;
+}
+
+function countIndeedTagsFromRawCode(rawCode) {
+    const s = normalizeString(rawCode);
+    if (!s) return 0;
+    return s.split("::").map(x => x.trim()).filter(Boolean).length;
+}
+
+function calculateJobTextLengthFromRawJob(row) {
+    let combined = "";
+    JOB_TEXT_LENGTH_SOURCE_HEADERS.forEach(header => {
+        let value = row?.[header];
+        if (header === "特徴") {
+            value = convertCodes(value, featureCodeMap);
         }
-
-        function mapNameCharacterClass(value) {
-            if (value === "日本人名") return "漢字を含む";
-            if (value === "外国人名") return "漢字を含まない";
-            return normalizeString(value);
+        if (value !== null && value !== undefined && String(value) !== "") {
+            combined += String(value);
         }
+    });
+    return combined.replace(/<br\s*\/?>/gi, "").length;
+}
 
-        function normalizeMailDomain(value) {
-            return normalizeString(value).replace(/^@/, "").toLowerCase();
+function buildJobRecordFromJoinedRow(row, jobRefId) {
+    const meta = row.__sheetMeta || {};
+    return {
+        "求人参照ID": jobRefId,
+        "企業ID": getEnterpriseIdFromRow(row),
+        "仕事番号": normalizeString(row["仕事番号"]),
+        "求人管理番号": normalizeString(row["求人管理番号"]),
+        "公開情報区分": normalizeString(row["公開情報区分"]),
+        "仕事名": normalizeString(row["仕事名"]),
+        "Indeed用求人タイトル": normalizeString(row["Indeed用求人タイトル"]),
+        "職種": normalizeString(row["職種"]),
+        "雇用形態": normalizeString(row["雇用形態"]),
+        "募集背景": normalizeString(row["募集背景"]),
+        "求人勤務地名称": normalizeString(row["求人勤務地名称"]),
+        "勤務地住所": normalizeString(row["勤務地1"]),
+        "勤務地都道府県": normalizeString(row["勤務地都道府県"]),
+        "最寄駅": normalizeString(row["最寄駅1"]),
+        "求人備考": normalizeString(row["求人備考"]),
+        "給与区分コード": normalizeString(meta.salaryTypeCode),
+        "給与区分": normalizeString(row["給与区分"]),
+        "給与金額MIN": row["給与金額MIN"] ?? "",
+        "給与金額MAX": row["給与金額MAX"] ?? "",
+        "メイン画像ファイル名": getJobImageFileName(row),
+        "メイン画像あり": row["TOP画像"] ?? "",
+        "求人画像枚数": row["画像枚数"] ?? "",
+        "動画タイトル": normalizeString(row["動画タイトル"]),
+        "求人動画あり": row["動画"] ?? "",
+        "特徴コード": normalizeString(meta.featureCode),
+        "特徴": normalizeString(row["特徴"]),
+        "Indeed求人タグコード": normalizeString(meta.indeedTagCode),
+        "Indeed求人タグ": normalizeString(row["Indeed用求人関連タグ"]),
+        "Indeed求人タグ数": row["求人タグ数"] ?? "",
+        "求人原稿文字数": row["求人文字数"] ?? ""
+    };
+}
+
+function buildJobSnapshotRecord(rawRow) {
+    const salaryCode = normalizeString(rawRow?.["給与区分"]);
+    const featureCode = normalizeString(rawRow?.["特徴"]);
+    const indeedTagCode = normalizeString(rawRow?.["Indeed用求人関連タグ"]);
+    const mainImage = normalizeString(rawRow?.["メイン画像データファイルタイトル"]);
+    const videoTitle = normalizeString(rawRow?.["動画タイトル"]);
+
+    return {
+        "企業ID": normalizeString(rawRow?.["企業ID"] ?? rawRow?.["企業コード"]),
+        "仕事番号": normalizeString(rawRow?.["仕事番号"]),
+        "求人管理番号": normalizeString(rawRow?.["求人管理番号"]),
+        "公開情報区分": normalizeString(rawRow?.["公開情報区分"]),
+        "仕事名": normalizeString(rawRow?.["仕事名"]),
+        "Indeed用求人タイトル": normalizeString(rawRow?.["Indeed用求人タイトル"]),
+        "職種": normalizeString(rawRow?.["職種"]),
+        "雇用形態": normalizeString(rawRow?.["雇用形態"]),
+        "募集背景": normalizeString(rawRow?.["募集背景"]),
+        "求人勤務地名称": normalizeString(rawRow?.["求人勤務地名称"]),
+        "勤務地住所": normalizeString(rawRow?.["勤務地1"]),
+        "勤務地都道府県": extractPrefecture(rawRow?.["勤務地1"]) || "",
+        "最寄駅": normalizeString(rawRow?.["最寄駅1"]),
+        "給与区分コード": salaryCode,
+        "給与区分": convertCodes(salaryCode, salaryTypeMap),
+        "給与金額MIN": rawRow?.["給与金額MIN"] ?? "",
+        "給与金額MAX": rawRow?.["給与金額MAX"] ?? "",
+        "メイン画像ファイル名": mainImage,
+        "メイン画像あり": mainImage ? 1 : 0,
+        "求人画像枚数": countImagesFromRawJob(rawRow),
+        "動画タイトル": videoTitle,
+        "求人動画あり": videoTitle ? 1 : 0,
+        "特徴コード": featureCode,
+        "特徴": convertCodes(featureCode, featureCodeMap),
+        "Indeed求人タグコード": indeedTagCode,
+        "Indeed求人タグ": convertCodes(indeedTagCode, indeedTagMap),
+        "Indeed求人タグ数": countIndeedTagsFromRawCode(indeedTagCode),
+        "求人原稿文字数": calculateJobTextLengthFromRawJob(rawRow)
+    };
+}
+
+function buildNormalizedSheetsModel() {
+    const jobRefByKey = new Map();
+    const jobRecords = [];
+    let nextJobRef = 1;
+
+    // Pagesが実際にJOINした求人だけを、同じJOINキー単位で1求人1行へ正規化する。
+    globalFinalData.forEach(row => {
+        const isMatched = Number(row["ファイルB結合フラグ"]) === 1;
+        if (!isMatched) return;
+
+        const key = buildJoinedJobKey(row);
+        if (!key || jobRefByKey.has(key)) return;
+
+        const jobRefId = `JOB${String(nextJobRef++).padStart(6, "0")}`;
+        jobRefByKey.set(key, jobRefId);
+        jobRecords.push(buildJobRecordFromJoinedRow(row, jobRefId));
+    });
+
+    const applicationRows = globalFinalData.map((row, index) => {
+        const isMatched = Number(row["ファイルB結合フラグ"]) === 1;
+        const key = isMatched ? buildJoinedJobKey(row) : "";
+        const jobRefId = key ? (jobRefByKey.get(key) || "") : "";
+
+        const record = {
+            "レコードID": `APP${String(index + 1).padStart(6, "0")}`,
+            "企業ID": getEnterpriseIdFromRow(row),
+            "仕事番号": normalizeString(row["仕事番号"]),
+            "求人参照ID": jobRefId,
+            "求人データ突合フラグ": isMatched ? 1 : 0,
+            "応募日時": normalizeString(row["応募日時"]),
+            "応募年月": normalizeString(row["応募年月"]),
+            "応募日": normalizeString(row["応募日"]),
+            "応募曜日": normalizeString(row["応募曜日"]),
+            "応募時間帯": row["応募時間帯"] ?? "",
+            "応募数": Number(row["応募数"]) || 1,
+            "対応状況": normalizeString(row["対応状況"]),
+            "応募媒体": normalizeString(row["応募媒体"]),
+            "年齢": row["年齢"] ?? "",
+            "年代": normalizeString(row["年代"]),
+            "氏名文字種区分": mapNameCharacterClass(row["国籍"]),
+            "メールドメイン": normalizeMailDomain(row["メールアドレス"]),
+            "居住都道府県": normalizeString(row["住所"]),
+            "勤務地・居住都道府県一致": row["住所都道府県"] ?? ""
+        };
+
+        return APPLICATION_DATA_HEADERS.map(header => record[header] ?? "");
+    });
+
+    const jobAnalysisRows = jobRecords.map(record =>
+        JOB_ANALYSIS_HEADERS.map(header => record[header] ?? "")
+    );
+
+    return {
+        applicationData: {
+            headers: APPLICATION_DATA_HEADERS,
+            rows: applicationRows
+        },
+        jobAnalysisMaster: {
+            headers: JOB_ANALYSIS_HEADERS,
+            rows: jobAnalysisRows
+        },
+        jobRefByKey
+    };
+}
+
+function buildJobSnapshotDataset() {
+    if (!globalJobSnapshot.length) {
+        return { headers: JOB_SNAPSHOT_HEADERS, rows: [] };
+    }
+
+    const rows = globalJobSnapshot.map(rawRow => {
+        const record = buildJobSnapshotRecord(rawRow);
+        return JOB_SNAPSHOT_HEADERS.map(header => record[header] ?? "");
+    });
+
+    return {
+        headers: JOB_SNAPSHOT_HEADERS,
+        rows
+    };
+}
+
+function buildProcessInfoDataset(normalizedModel) {
+    const joinRate = globalFinalData.length > 0
+        ? (globalJoinCount / globalFinalData.length) * 100
+        : 0;
+
+    const rows = [
+        ["ETL実行日時", globalEtlExecutedAt],
+        ["schemaVersion", SHEETS_SCHEMA_VERSION],
+        ["アプリバージョン", SHEETS_APP_VERSION],
+        ["応募CSVファイル数", globalInputFileInfo.filter(x => x.type === "応募CSV").length],
+        ["求人CSVファイル数", globalInputFileInfo.filter(x => x.type === "求人CSV").length],
+        ["重複除外件数", globalDuplicateCount],
+        ["分析対象応募数", globalFinalData.length],
+        ["求人突合済応募数", globalJoinCount],
+        ["求人突合率", Number(joinRate.toFixed(2))],
+        ["JOIN済み求人マスタ件数", normalizedModel.jobAnalysisMaster.rows.length],
+        ["求人CSVスナップショット行数", globalJobSnapshot.length],
+        ["画像分析対象数", globalImageLookupStats.targetCount],
+        ["画像URL取得成功数", globalImageLookupStats.successCount],
+        ["画像URL未取得数", globalImageLookupStats.unresolvedCount]
+    ];
+
+    return { headers: ["項目", "値"], rows };
+}
+
+function buildInputFilesDataset() {
+    const headers = ["種別", "ファイル名", "読込行数", "文字コード"];
+    return {
+        headers,
+        rows: globalInputFileInfo.map(info => [
+            info.type,
+            info.name,
+            info.rowCount,
+            info.encoding
+        ])
+    };
+}
+
+function buildCodeMasterDataset() {
+    const headers = ["マスタ種別", "コード", "表示名"];
+    const rows = [
+        ...Object.entries(salaryTypeMap)
+            .map(([code, label]) => ["給与区分", code, label]),
+        ...Object.entries(featureCodeMap)
+            .map(([code, label]) => ["特徴", code, label])
+    ];
+    return { headers, rows };
+}
+
+function buildIndeedTagMasterDataset() {
+    const headers = ["コード", "表示名"];
+    const rows = Object.entries(indeedTagMap)
+        .map(([code, label]) => [code, label]);
+    return { headers, rows };
+}
+
+function buildImageMasterInitialDataset() {
+    const headers = [
+        "画像ファイル名",
+        "画像URL",
+        "取得状態",
+        "参照求人管理番号",
+        "取得方法",
+        "取得日時",
+        "メモ"
+    ];
+    return {
+        headers,
+        rows: globalImageMasterInitial.map(row =>
+            headers.map(header => row?.[header] ?? "")
+        )
+    };
+}
+
+function getApplicationDateRange() {
+    const timestamps = globalFinalData
+        .map(row => new Date(String(row["応募日時"] || "").replace(/-/g, "/")))
+        .filter(d => !Number.isNaN(d.getTime()))
+        .sort((a, b) => a - b);
+
+    const toYmd = d =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+    return {
+        min: timestamps.length ? toYmd(timestamps[0]) : "",
+        max: timestamps.length ? toYmd(timestamps[timestamps.length - 1]) : ""
+    };
+}
+
+function buildSheetsPayloadV3(accessKey = "") {
+    const dateRange = getApplicationDateRange();
+    const ageMinEl = document.getElementById("filterAgeMin");
+    const ageMaxEl = document.getElementById("filterAgeMax");
+    const keywordEl = document.getElementById("keywordInput");
+    const jobNameKeywords = normalizeString(keywordEl?.value)
+        .split(/\r?\n/)
+        .map(x => x.trim())
+        .filter(Boolean);
+
+    const normalizedModel = buildNormalizedSheetsModel();
+
+    return {
+        schemaVersion: SHEETS_SCHEMA_VERSION,
+        requestId: makeRequestId(),
+        accessKey,
+        requestedAt: new Date().toISOString(),
+        appVersion: SHEETS_APP_VERSION,
+        initialSettings: {
+            analysisStartDate: dateRange.min,
+            analysisEndDate: dateRange.max,
+            targetAgeMin: ageMinEl?.value === "" ? "" : Number(ageMinEl?.value),
+            targetAgeMax: ageMaxEl?.value === "" ? "" : Number(ageMaxEl?.value),
+            ageMode: "年代",
+            jobNameKeywords
+        },
+        datasets: {
+            applicationData: normalizedModel.applicationData,
+            jobAnalysisMaster: normalizedModel.jobAnalysisMaster,
+            jobSnapshot: buildJobSnapshotDataset(),
+            processInfo: buildProcessInfoDataset(normalizedModel),
+            inputFiles: buildInputFilesDataset(),
+            codeMaster: buildCodeMasterDataset(),
+            indeedTagMaster: buildIndeedTagMasterDataset(),
+            imageMasterInitial: buildImageMasterInitialDataset()
         }
+    };
+}
 
-        function buildApplicationJoinDataset() {
-            const rows = globalFinalData.map((row, index) => {
-                const meta = row.__sheetMeta || {};
-                const record = {
-                    "レコードID": `APP${String(index + 1).padStart(6, "0")}`,
-                    "企業ID": normalizeString(row["企業コード"] ?? row["企業ID"]),
-                    "仕事番号": normalizeString(row["仕事番号"]),
-                    "求人管理番号": normalizeString(row["求人管理番号"]),
-                    "公開情報区分": normalizeString(row["公開情報区分"]),
-                    "求人データ突合フラグ": Number(row["ファイルB結合フラグ"]) === 1 ? 1 : 0,
-                    "応募日時": normalizeString(row["応募日時"]),
-                    "応募年月": normalizeString(row["応募年月"]),
-                    "応募日": normalizeString(row["応募日"]),
-                    "応募曜日": normalizeString(row["応募曜日"]),
-                    "応募時間帯": row["応募時間帯"] ?? "",
-                    "応募数": Number(row["応募数"]) || 1,
-                    "対応状況": normalizeString(row["対応状況"]),
-                    "応募媒体": normalizeString(row["応募媒体"]),
-                    "年齢": row["年齢"] ?? "",
-                    "年代": normalizeString(row["年代"]),
-                    "氏名文字種区分": mapNameCharacterClass(row["国籍"]),
-                    "メールドメイン": normalizeMailDomain(row["メールアドレス"]),
-                    "居住都道府県": normalizeString(row["住所"]),
-                    "勤務地・居住都道府県一致": row["住所都道府県"] ?? "",
-                    "仕事名": normalizeString(row["仕事名"]),
-                    "Indeed用求人タイトル": normalizeString(row["Indeed用求人タイトル"]),
-                    "職種": normalizeString(row["職種"]),
-                    "雇用形態": normalizeString(row["雇用形態"]),
-                    "募集背景": normalizeString(row["募集背景"]),
-                    "求人勤務地名称": normalizeString(row["求人勤務地名称"]),
-                    "勤務地住所": normalizeString(row["勤務地1"]),
-                    "勤務地都道府県": normalizeString(row["勤務地都道府県"]),
-                    "最寄駅": normalizeString(row["最寄駅1"]),
-                    "仕事内容": normalizeString(row["仕事内容"]),
-                    "求人備考": normalizeString(row["求人備考"]),
-                    "雇用形態備考": normalizeString(row["雇用形態備考"]),
-                    "給与区分コード": normalizeString(meta.salaryTypeCode),
-                    "給与区分": normalizeString(row["給与区分"]),
-                    "給与金額MIN": row["給与金額MIN"] ?? "",
-                    "給与金額MAX": row["給与金額MAX"] ?? "",
-                    "給与備考": normalizeString(row["給与備考"]),
-                    "月収例": normalizeString(row["月収例"]),
-                    "年収例": normalizeString(row["年収例"]),
-                    "勤務時間": normalizeString(row["勤務時間"]),
-                    "休日・休暇": normalizeString(row["休日・休暇"]),
-                    "キャッチコピー": normalizeString(row["キャッチコピー"]),
-                    "インフォメーション": normalizeString(row["インフォメーション"]),
-                    "アピールポイント": normalizeString(row["アピールポイント"]),
-                    "醍醐味": normalizeString(row["醍醐味"]),
-                    "厳しさ": normalizeString(row["厳しさ"]),
-                    "こんな人が活躍": normalizeString(row["こんな人が活躍"]),
-                    "待遇・福利厚生": normalizeString(row["待遇・福利厚生"]),
-                    "応募資格": normalizeString(row["応募資格"]),
-                    "選考手順": normalizeString(row["選考手順"]),
-                    "面接地住所": normalizeString(row["面接地住所"]),
-                    "メイン画像ファイル名": getJobImageFileName(row),
-                    "サブ画像1ファイル名": normalizeString(row["サブ画像1データファイルタイトル"]),
-                    "サブ画像2ファイル名": normalizeString(row["サブ画像2データファイルタイトル"]),
-                    "サブ画像3ファイル名": normalizeString(row["サブ画像3データファイルタイトル"]),
-                    "メイン画像あり": row["TOP画像"] ?? "",
-                    "求人画像枚数": row["画像枚数"] ?? "",
-                    "動画タイトル": normalizeString(row["動画タイトル"]),
-                    "求人動画あり": row["動画"] ?? "",
-                    "特徴コード": normalizeString(meta.featureCode),
-                    "特徴": normalizeString(row["特徴"]),
-                    "Indeed求人タグコード": normalizeString(meta.indeedTagCode),
-                    "Indeed求人タグ": normalizeString(row["Indeed用求人関連タグ"]),
-                    "Indeed求人タグ数": row["求人タグ数"] ?? "",
-                    "求人原稿文字数": row["求人文字数"] ?? ""
-                };
-                return APPLICATION_JOIN_HEADERS.map(header => record[header] ?? "");
+function measureJsonBytes(value) {
+    return new Blob([JSON.stringify(value)]).size;
+}
+
+function formatByteSize(bytes) {
+    const mb = bytes / 1024 / 1024;
+    if (mb >= 1) return `${bytes.toLocaleString()} bytes (${mb.toFixed(2)} MB)`;
+    const kb = bytes / 1024;
+    return `${bytes.toLocaleString()} bytes (${kb.toFixed(2)} KB)`;
+}
+
+function getDatasetSizeBreakdown(payload) {
+    const result = [];
+    const datasets = payload?.datasets || {};
+
+    Object.entries(datasets).forEach(([key, dataset]) => {
+        const bytes = measureJsonBytes(dataset);
+        result.push({
+            key,
+            bytes,
+            rows: Array.isArray(dataset?.rows) ? dataset.rows.length : 0,
+            cols: Array.isArray(dataset?.headers) ? dataset.headers.length : 0
+        });
+    });
+
+    return result.sort((a, b) => b.bytes - a.bytes);
+}
+
+async function runSheetsPayloadVerification() {
+    const btn = document.getElementById("sheetsPayloadTestBtn");
+    const statusEl = document.getElementById("sheetsPayloadTestStatus");
+    if (!btn || !statusEl || globalFinalData.length === 0) return;
+
+    const original = btn.textContent.trim();
+    btn.disabled = true;
+    statusEl.classList.remove("hidden");
+    statusEl.textContent = "正規化した送信データを準備しています...";
+
+    try {
+        const planSummary = getImageLookupPlanSummary();
+
+        if (
+            planSummary.analysisTargetCount > 0 &&
+            globalImageMasterInitial.length !== planSummary.analysisTargetCount
+        ) {
+            await resolveImageMasterInitial((done, total) => {
+                statusEl.textContent =
+                    `画像URLを先に解決しています... ${done}/${total}`;
             });
-            return { headers: APPLICATION_JOIN_HEADERS, rows };
         }
 
-        function buildJobSnapshotDataset() {
-            if (!globalJobSnapshot.length) return { headers: [], rows: [] };
-            const existing = new Set(globalJobSnapshot.flatMap(row => Object.keys(row || {})));
-            const headers = JOB_SNAPSHOT_CANDIDATE_HEADERS.filter(header => existing.has(header));
-            return {
-                headers,
-                rows: globalJobSnapshot.map(row => headers.map(header => row?.[header] ?? ""))
-            };
-        }
+        const payload = buildSheetsPayloadV3("");
+        const totalBytes = measureJsonBytes(payload);
+        const breakdown = getDatasetSizeBreakdown(payload);
+        const d = payload.datasets;
 
-        function buildProcessInfoDataset() {
-            const joinRate = globalFinalData.length > 0
-                ? (globalJoinCount / globalFinalData.length) * 100
-                : 0;
-            const rows = [
-                ["ETL実行日時", globalEtlExecutedAt],
-                ["schemaVersion", SHEETS_SCHEMA_VERSION],
-                ["アプリバージョン", SHEETS_APP_VERSION],
-                ["応募CSVファイル数", globalInputFileInfo.filter(x => x.type === "応募CSV").length],
-                ["求人CSVファイル数", globalInputFileInfo.filter(x => x.type === "求人CSV").length],
-                ["重複除外件数", globalDuplicateCount],
-                ["分析対象応募数", globalFinalData.length],
-                ["求人突合済応募数", globalJoinCount],
-                ["求人突合率", Number(joinRate.toFixed(2))],
-                ["画像分析対象数", globalImageLookupStats.targetCount],
-                ["画像URL取得成功数", globalImageLookupStats.successCount],
-                ["画像URL未取得数", globalImageLookupStats.unresolvedCount]
-            ];
-            return { headers: ["項目", "値"], rows };
-        }
+        const breakdownText = breakdown
+            .map(item => {
+                const shape = item.cols > 0
+                    ? `${item.rows.toLocaleString()}行 × ${item.cols}列`
+                    : `${item.rows.toLocaleString()}行`;
+                const pct = totalBytes > 0
+                    ? ((item.bytes / totalBytes) * 100).toFixed(1)
+                    : "0.0";
+                return `・${item.key}: ${formatByteSize(item.bytes)} / ${shape} / ${pct}%`;
+            })
+            .join("\n");
 
-        function buildInputFilesDataset() {
-            const headers = ["種別", "ファイル名", "読込行数", "文字コード"];
-            return {
-                headers,
-                rows: globalInputFileInfo.map(info => [
-                    info.type, info.name, info.rowCount, info.encoding
-                ])
-            };
-        }
+        statusEl.textContent =
+            `schemaVersion: ${payload.schemaVersion}\n` +
+            `payload全体: ${formatByteSize(totalBytes)}\n\n` +
+            `【主要データ件数】\n` +
+            `応募データ: ${d.applicationData.rows.length.toLocaleString()}行 × ${d.applicationData.headers.length}列\n` +
+            `求人分析マスタ: ${d.jobAnalysisMaster.rows.length.toLocaleString()}行 × ${d.jobAnalysisMaster.headers.length}列\n` +
+            `求人CSVスナップショット: ${d.jobSnapshot.rows.length.toLocaleString()}行 × ${d.jobSnapshot.headers.length}列\n` +
+            `コードマスタ: ${d.codeMaster.rows.length.toLocaleString()}行\n` +
+            `Indeed求人タグマスタ: ${d.indeedTagMaster.rows.length.toLocaleString()}行\n` +
+            `画像マスタ初期値: ${d.imageMasterInitial.rows.length.toLocaleString()}行\n\n` +
+            `【データセット別容量：大きい順】\n${breakdownText}\n\n` +
+            `【画像】\n` +
+            `画像分析対象: ${globalImageLookupStats.targetCount.toLocaleString()}種類\n` +
+            `画像URL自動取得成功: ${globalImageLookupStats.successCount.toLocaleString()}種類\n` +
+            `画像URL未取得: ${globalImageLookupStats.unresolvedCount.toLocaleString()}種類`;
 
-        function buildCodeMasterDataset() {
-            const headers = ["マスタ種別", "コード", "表示名"];
-            const rows = [
-                ...Object.entries(salaryTypeMap).map(([code, label]) => ["給与区分", code, label]),
-                ...Object.entries(featureCodeMap).map(([code, label]) => ["特徴", code, label])
-            ];
-            return { headers, rows };
-        }
+        console.log("[Sheets payload v3 normalized preview]", payload);
+        console.table(breakdown);
+    } catch (error) {
+        statusEl.textContent =
+            "送信データ確認でエラーが発生しました。\n" +
+            (error?.message || String(error));
+    } finally {
+        btn.disabled = false;
+        btn.textContent = original;
+    }
+}
 
-        function buildIndeedTagMasterDataset() {
-            const headers = ["コード", "表示名"];
-            const rows = Object.entries(indeedTagMap).map(([code, label]) => [code, label]);
-            return { headers, rows };
-        }
-
-        function buildImageMasterInitialDataset() {
-            const headers = [
-                "画像ファイル名", "画像URL", "取得状態", "参照求人管理番号",
-                "取得方法", "取得日時", "メモ"
-            ];
-            return {
-                headers,
-                rows: globalImageMasterInitial.map(row =>
-                    headers.map(header => row?.[header] ?? "")
-                )
-            };
-        }
-
-        function getApplicationDateRange() {
-            const timestamps = globalFinalData
-                .map(row => new Date(String(row["応募日時"] || "").replace(/-/g, '/')))
-                .filter(d => !Number.isNaN(d.getTime()))
-                .sort((a, b) => a - b);
-            const toYmd = d =>
-                `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-            return {
-                min: timestamps.length ? toYmd(timestamps[0]) : "",
-                max: timestamps.length ? toYmd(timestamps[timestamps.length - 1]) : ""
-            };
-        }
-
-        function buildSheetsPayloadV2(accessKey = "") {
-            const dateRange = getApplicationDateRange();
-            const ageMinEl = document.getElementById("filterAgeMin");
-            const ageMaxEl = document.getElementById("filterAgeMax");
-            const keywordEl = document.getElementById("keywordInput");
-            const jobNameKeywords = normalizeString(keywordEl?.value)
-                .split(/\r?\n/)
-                .map(x => x.trim())
-                .filter(Boolean);
-
-            return {
-                schemaVersion: SHEETS_SCHEMA_VERSION,
-                requestId: makeRequestId(),
-                accessKey,
-                requestedAt: new Date().toISOString(),
-                appVersion: SHEETS_APP_VERSION,
-                initialSettings: {
-                    analysisStartDate: dateRange.min,
-                    analysisEndDate: dateRange.max,
-                    targetAgeMin: ageMinEl?.value === "" ? "" : Number(ageMinEl?.value),
-                    targetAgeMax: ageMaxEl?.value === "" ? "" : Number(ageMaxEl?.value),
-                    ageMode: "年代",
-                    jobNameKeywords
-                },
-                datasets: {
-                    applicationJoin: buildApplicationJoinDataset(),
-                    jobSnapshot: buildJobSnapshotDataset(),
-                    processInfo: buildProcessInfoDataset(),
-                    inputFiles: buildInputFilesDataset(),
-                    codeMaster: buildCodeMasterDataset(),
-                    indeedTagMaster: buildIndeedTagMasterDataset(),
-                    imageMasterInitial: buildImageMasterInitialDataset()
-                }
-            };
-        }
-
-        function measurePayloadBytes(payload) {
-            return new Blob([JSON.stringify(payload)]).size;
-        }
-
-        async function runSheetsPayloadVerification() {
-            const btn = document.getElementById("sheetsPayloadTestBtn");
-            const statusEl = document.getElementById("sheetsPayloadTestStatus");
-            if (!btn || !statusEl || globalFinalData.length === 0) return;
-
-            const original = btn.textContent.trim();
-            btn.disabled = true;
-            statusEl.classList.remove("hidden");
-            statusEl.textContent = "送信データを準備しています...";
-
-            try {
-                const planSummary = getImageLookupPlanSummary();
-                if (
-                    planSummary.analysisTargetCount > 0 &&
-                    globalImageMasterInitial.length !== planSummary.analysisTargetCount
-                ) {
-                    await resolveImageMasterInitial((done, total) => {
-                        statusEl.textContent =
-                            `画像URLを先に解決しています... ${done}/${total}`;
-                    });
-                }
-
-                const payload = buildSheetsPayloadV2("");
-                const bytes = measurePayloadBytes(payload);
-                const mb = bytes / 1024 / 1024;
-                const d = payload.datasets;
-                statusEl.textContent =
-                    `schemaVersion: ${payload.schemaVersion}\n` +
-                    `payload容量: ${bytes.toLocaleString()} bytes (${mb.toFixed(2)} MB)\n\n` +
-                    `応募JOINデータ: ${d.applicationJoin.rows.length.toLocaleString()}行 × ${d.applicationJoin.headers.length}列\n` +
-                    `求人CSVスナップショット: ${d.jobSnapshot.rows.length.toLocaleString()}行 × ${d.jobSnapshot.headers.length}列\n` +
-                    `コードマスタ: ${d.codeMaster.rows.length.toLocaleString()}行\n` +
-                    `Indeed求人タグマスタ: ${d.indeedTagMaster.rows.length.toLocaleString()}行\n` +
-                    `画像マスタ初期値: ${d.imageMasterInitial.rows.length.toLocaleString()}行\n\n` +
-                    `画像分析対象: ${globalImageLookupStats.targetCount.toLocaleString()}種類\n` +
-                    `画像URL自動取得成功: ${globalImageLookupStats.successCount.toLocaleString()}種類\n` +
-                    `画像URL未取得: ${globalImageLookupStats.unresolvedCount.toLocaleString()}種類`;
-
-                console.log("[Sheets payload v2 preview]", payload);
-            } catch (error) {
-                statusEl.textContent =
-                    "送信データ確認でエラーが発生しました。\n" +
-                    (error?.message || String(error));
-            } finally {
-                btn.disabled = false;
-                btn.textContent = original;
-            }
-        }
-
-        const sheetsPayloadTestBtn = document.getElementById("sheetsPayloadTestBtn");
-        if (sheetsPayloadTestBtn) {
-            sheetsPayloadTestBtn.addEventListener("click", runSheetsPayloadVerification);
-        }
+const sheetsPayloadTestBtn = document.getElementById("sheetsPayloadTestBtn");
+if (sheetsPayloadTestBtn) {
+    sheetsPayloadTestBtn.addEventListener(
+        "click",
+        runSheetsPayloadVerification
+    );
+}
 
         // --- エクスポートモーダルの制御 ---
         let currentExportType = ''; // 'excel' or 'pptx'
