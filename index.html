@@ -123,31 +123,35 @@
                     <label class="block font-bold text-sm text-gray-700 mb-3">Google Sheets連携設定</label>
 
                     <div class="space-y-3">
-                        <div>
-                            <label for="sheetsApiUrlInput" class="block text-xs font-bold text-gray-600 mb-1">
-                                連携先 Web App URL
-                            </label>
-                            <input
-                                id="sheetsApiUrlInput"
-                                type="url"
-                                inputmode="url"
-                                autocomplete="off"
-                                placeholder="https://script.google.com/macros/s/.../exec"
-                                class="border border-gray-300 p-2.5 rounded-lg w-full text-xs bg-gray-50 focus:bg-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all"
-                            >
+                        <div class="rounded-xl border border-indigo-100 bg-indigo-50/60 p-3">
+                            <div class="text-xs font-bold text-indigo-800">連携先</div>
+                            <div class="text-[11px] leading-relaxed text-indigo-700 mt-1">
+                                Web App URLはツール側に設定済みです。新しいブラウザではアクセスキーのみ入力してください。
+                            </div>
                         </div>
 
                         <div>
                             <label for="sheetsAccessKeyInput" class="block text-xs font-bold text-gray-600 mb-1">
                                 アクセスキー
                             </label>
-                            <input
-                                id="sheetsAccessKeyInput"
-                                type="password"
-                                autocomplete="off"
-                                placeholder="API GASに設定したACCESS_KEY"
-                                class="border border-gray-300 p-2.5 rounded-lg w-full text-xs bg-gray-50 focus:bg-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all"
-                            >
+                            <div class="flex gap-2">
+                                <input
+                                    id="sheetsAccessKeyInput"
+                                    type="password"
+                                    autocomplete="off"
+                                    placeholder="アクセスキーを入力"
+                                    class="border border-gray-300 p-2.5 rounded-lg flex-1 min-w-0 text-xs bg-gray-50 focus:bg-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all"
+                                >
+                                <a
+                                    href="https://docs.google.com/document/d/1c5u4HqoHo5LQRPrXjbWWUJI00BPjTv0Ekk2VA6KtYIQ/edit"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    class="shrink-0 inline-flex items-center justify-center px-3 py-2 rounded-lg border border-indigo-200 bg-white text-indigo-700 text-xs font-bold hover:bg-indigo-50 transition"
+                                    title="組織メンバー限定のアクセスキー確認ドキュメントを開く"
+                                >
+                                    キー確認
+                                </a>
+                            </div>
                         </div>
 
                         <button
@@ -155,14 +159,33 @@
                             type="button"
                             class="w-full bg-indigo-50 text-indigo-700 border border-indigo-200 px-4 py-2.5 rounded-xl font-bold hover:bg-indigo-100 transition-all text-sm"
                         >
-                            このブラウザに連携設定を保存
+                            このブラウザにアクセスキーを保存
                         </button>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <a
+                                href="https://drive.google.com/drive/folders/1p5q8E9C-l1PCO7eCcRgdwrfTMTlpyFng"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="inline-flex items-center justify-center px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 text-xs font-bold hover:bg-gray-50 transition"
+                            >
+                                出力フォルダを開く
+                            </a>
+                            <a
+                                href="https://docs.google.com/document/d/1c5u4HqoHo5LQRPrXjbWWUJI00BPjTv0Ekk2VA6KtYIQ/edit"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="inline-flex items-center justify-center px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 text-xs font-bold hover:bg-gray-50 transition"
+                            >
+                                アクセスキー確認Doc
+                            </a>
+                        </div>
 
                         <div id="sheetsConnectionSettingsStatus" class="hidden text-xs rounded-lg p-2.5"></div>
 
                         <p class="text-[11px] leading-relaxed text-gray-500">
-                            URLとアクセスキーはこのブラウザのlocalStorageに保存します。
-                            生成するスプレッドシートにはアクセスキーを保存しません。
+                            アクセスキーはこのブラウザのlocalStorageに保存します。
+                            生成・更新するスプレッドシートにはアクセスキーを保存しません。
                         </p>
                     </div>
                 </div>
@@ -290,41 +313,73 @@
                         <svg class="w-6 h-6 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
                     </button>
 
-                    <!-- Google Sheets生成 -->
+                    <!-- Google Sheets生成 / 既存レポート更新 -->
                     <div id="sheetsCreateArea" class="w-full max-w-2xl rounded-2xl border border-green-200 bg-green-50/70 p-5">
-                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                            <div class="min-w-0">
-                                <div class="font-extrabold text-green-900 text-base">Google Sheetsレポートを作成</div>
-                                <div id="sheetsCreateSummary" class="text-xs text-green-800 mt-1.5 leading-relaxed">
-                                    今回の集計結果から、共有・再集計できるGoogle Sheets版レポートを作成します。
+                        <div class="flex flex-col gap-4">
+                            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                                <div class="min-w-0">
+                                    <div id="sheetsCreateTitle" class="font-extrabold text-green-900 text-base">Google Sheetsレポートを新規作成</div>
+                                    <div id="sheetsCreateSummary" class="text-xs text-green-800 mt-1.5 leading-relaxed">
+                                        今回の集計結果から、共有・再集計できるGoogle Sheets版レポートを作成します。
+                                    </div>
+                                    <div class="text-[11px] text-green-700/80 mt-2">
+                                        氏名・メールアドレス全文・詳細な居住住所・重複行明細は送信しません。
+                                    </div>
                                 </div>
-                                <div class="text-[11px] text-green-700/80 mt-2">
-                                    氏名・メールアドレス全文・詳細な居住住所・重複行明細は送信しません。
+                                <button
+                                    id="createGoogleSheetBtn"
+                                    type="button"
+                                    class="shrink-0 px-5 py-3 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-extrabold shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    新規レポートを作成
+                                </button>
+                            </div>
+
+                            <div class="rounded-xl border border-green-200 bg-white/90 p-4">
+                                <div class="flex items-center justify-between gap-3">
+                                    <div>
+                                        <div class="text-xs font-extrabold text-gray-700">既存レポートを更新する場合</div>
+                                        <div class="text-[11px] text-gray-500 mt-1">
+                                            過去のGoogle Sheets URLを貼り付けると、新規作成せず、そのレポートの分析元データを更新します。
+                                        </div>
+                                    </div>
+                                    <a
+                                        href="https://drive.google.com/drive/folders/1p5q8E9C-l1PCO7eCcRgdwrfTMTlpyFng"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="shrink-0 text-xs font-bold text-green-700 hover:text-green-900 underline"
+                                    >
+                                        出力フォルダ
+                                    </a>
+                                </div>
+                                <input
+                                    id="existingSheetUrlInput"
+                                    type="url"
+                                    inputmode="url"
+                                    autocomplete="off"
+                                    placeholder="https://docs.google.com/spreadsheets/d/.../edit"
+                                    class="mt-3 border border-gray-300 p-2.5 rounded-lg w-full text-xs bg-gray-50 focus:bg-white focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all"
+                                >
+                                <div id="existingSheetModeNote" class="mt-2 text-[11px] leading-relaxed text-gray-500">
+                                    空欄なら新規作成します。URLを入力した場合は、集計設定・KWマスタ・企業表示名・画像マスタ等を引き継いで更新します。
                                 </div>
                             </div>
-                            <button
-                                id="createGoogleSheetBtn"
-                                type="button"
-                                class="shrink-0 px-5 py-3 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-extrabold shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                Google Sheetsレポートを作成
-                            </button>
-                        </div>
 
-                        <div id="sheetsCreateStatus" class="hidden mt-4 text-xs rounded-xl bg-white border border-green-100 p-3 text-gray-700 whitespace-pre-wrap"></div>
+                            <div id="sheetsCreateStatus" class="hidden text-xs rounded-xl bg-white border border-green-100 p-3 text-gray-700 whitespace-pre-wrap"></div>
 
-                        <div id="sheetsCreateSuccess" class="hidden mt-4 rounded-xl border border-emerald-200 bg-white p-4">
-                            <div class="font-bold text-emerald-800 text-sm">スプレッドシートを作成しました</div>
-                            <div id="sheetsCreateSuccessMeta" class="text-xs text-gray-600 mt-1"></div>
-                            <a
-                                id="openCreatedSheetLink"
-                                href="#"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                class="inline-flex items-center mt-3 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold transition"
-                            >
-                                作成したGoogleスプレッドシートを開く
-                            </a>
+                            <div id="sheetsCreateSuccess" class="hidden rounded-xl border border-emerald-200 bg-white p-4">
+                                <div id="sheetsCreateSuccessTitle" class="font-bold text-emerald-800 text-sm">スプレッドシートを作成しました</div>
+                                <div id="sheetsCreateSuccessMeta" class="text-xs text-gray-600 mt-1"></div>
+                                <a
+                                    id="openCreatedSheetLink"
+                                    href="#"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    class="inline-flex items-center mt-3 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold transition"
+                                >
+                                    Googleスプレッドシートを開く
+                                </a>
+                            </div>
                         </div>
                     </div>
 
@@ -616,9 +671,12 @@
         let globalEtlExecutedAt = "";
 
         // Google Sheets API連携状態
-        const SHEETS_API_URL_STORAGE_KEY = "validApplicationAnalysis.sheetsApiUrl";
+        const SHEETS_API_URL = "https://script.google.com/macros/s/AKfycbwS_-ptDyhVk5yrNtRB8I32WUJen-xdjKUtp-Rf7Dbdhhg4V9Vw3gneD9K7ErZgP_Y/exec";
+        const SHEETS_OUTPUT_FOLDER_URL = "https://drive.google.com/drive/folders/1p5q8E9C-l1PCO7eCcRgdwrfTMTlpyFng";
+        const SHEETS_ACCESS_KEY_DOC_URL = "https://docs.google.com/document/d/1c5u4HqoHo5LQRPrXjbWWUJI00BPjTv0Ekk2VA6KtYIQ/edit";
         const SHEETS_ACCESS_KEY_STORAGE_KEY = "validApplicationAnalysis.sheetsAccessKey";
         const SHEETS_LAST_RESULT_STORAGE_KEY = "validApplicationAnalysis.lastSheetResult";
+        const SHEETS_UPDATE_TARGET_STORAGE_KEY = "validApplicationAnalysis.updateTargetUrl";
         const SHEETS_POST_TIMEOUT_MS = 330000; // 5分30秒。1回のAPI処理待機上限。
 const SHEETS_MAX_AUTO_RESUME_MS = 900000; // 自動再開は最大15分。
 const SHEETS_MAX_AUTO_RESUME_ROUNDS = 12;
@@ -1271,7 +1329,7 @@ const SHEETS_MAX_AUTO_RESUME_ROUNDS = 12;
 // Pages側のJOIN結果を求人参照IDへ変換するため、
 // API GAS側で元CSVのJOINロジックを再現する必要はない。
 const SHEETS_SCHEMA_VERSION = "3.0";
-const SHEETS_APP_VERSION = "2026.08.30-production-candidate-v1";
+const SHEETS_APP_VERSION = "2026.08.30-create-update-mode-v1";
 
 const APPLICATION_DATA_HEADERS = [
     "レコードID",
@@ -1690,7 +1748,7 @@ function getApplicationDateRange() {
     };
 }
 
-function buildSheetsPayloadV3(accessKey = "", requestId = "") {
+function buildSheetsPayloadV3(accessKey = "", requestId = "", targetSpreadsheetUrl = "") {
     const dateRange = getApplicationDateRange();
     const ageMinEl = document.getElementById("filterAgeMin");
     const ageMaxEl = document.getElementById("filterAgeMax");
@@ -1708,6 +1766,8 @@ function buildSheetsPayloadV3(accessKey = "", requestId = "") {
         accessKey,
         requestedAt: new Date().toISOString(),
         appVersion: SHEETS_APP_VERSION,
+        operationMode: normalizeString(targetSpreadsheetUrl) ? "update" : "create",
+        targetSpreadsheetUrl: normalizeString(targetSpreadsheetUrl),
         initialSettings: {
             analysisStartDate: dateRange.min,
             analysisEndDate: dateRange.max,
@@ -1837,13 +1897,6 @@ if (sheetsPayloadTestBtn) {
 // ==========================================
 // Google Sheets API POST連携
 // ==========================================
-function getStoredSheetsApiUrl() {
-    try {
-        return normalizeString(localStorage.getItem(SHEETS_API_URL_STORAGE_KEY));
-    } catch (_) {
-        return "";
-    }
-}
 
 function getStoredSheetsAccessKey() {
     try {
@@ -1853,23 +1906,18 @@ function getStoredSheetsAccessKey() {
     }
 }
 
+function getStoredUpdateTargetUrl() {
+    try {
+        return normalizeString(localStorage.getItem(SHEETS_UPDATE_TARGET_STORAGE_KEY));
+    } catch (_) {
+        return "";
+    }
+}
+
 function saveSheetsConnectionSettings() {
-    const urlInput = document.getElementById("sheetsApiUrlInput");
     const keyInput = document.getElementById("sheetsAccessKeyInput");
     const statusEl = document.getElementById("sheetsConnectionSettingsStatus");
-
-    const apiUrl = normalizeString(urlInput?.value);
     const accessKey = normalizeString(keyInput?.value);
-
-    if (!apiUrl || !/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec(?:\?.*)?$/.test(apiUrl)) {
-        if (statusEl) {
-            statusEl.className = "text-xs rounded-lg p-2.5 bg-red-50 text-red-700 border border-red-200";
-            statusEl.textContent = "Web Appの /exec URLを入力してください。";
-            statusEl.classList.remove("hidden");
-        }
-        urlInput?.focus();
-        return false;
-    }
 
     if (!accessKey) {
         if (statusEl) {
@@ -1882,7 +1930,6 @@ function saveSheetsConnectionSettings() {
     }
 
     try {
-        localStorage.setItem(SHEETS_API_URL_STORAGE_KEY, apiUrl);
         localStorage.setItem(SHEETS_ACCESS_KEY_STORAGE_KEY, accessKey);
     } catch (error) {
         if (statusEl) {
@@ -1895,30 +1942,68 @@ function saveSheetsConnectionSettings() {
 
     if (statusEl) {
         statusEl.className = "text-xs rounded-lg p-2.5 bg-emerald-50 text-emerald-700 border border-emerald-200";
-        statusEl.textContent = "Google Sheets連携設定を保存しました。";
+        statusEl.textContent = "アクセスキーをこのブラウザに保存しました。";
         statusEl.classList.remove("hidden");
     }
     return true;
 }
 
 function loadSheetsConnectionSettingsIntoModal() {
-    const urlInput = document.getElementById("sheetsApiUrlInput");
     const keyInput = document.getElementById("sheetsAccessKeyInput");
-
-    if (urlInput) urlInput.value = getStoredSheetsApiUrl();
     if (keyInput) keyInput.value = getStoredSheetsAccessKey();
 }
 
-function openSheetsSettingsAndFocus(field = "url") {
+function openSheetsSettingsAndFocus() {
     loadSheetsConnectionSettingsIntoModal();
     settingsModal.classList.remove("hidden");
 
     setTimeout(() => {
-        const target = field === "key"
-            ? document.getElementById("sheetsAccessKeyInput")
-            : document.getElementById("sheetsApiUrlInput");
-        target?.focus();
+        document.getElementById("sheetsAccessKeyInput")?.focus();
     }, 50);
+}
+
+function extractSpreadsheetIdFromUrl(value) {
+    const text = normalizeString(value);
+    if (!text) return "";
+
+    const urlMatch = text.match(/\/spreadsheets\/d\/([A-Za-z0-9_-]+)/);
+    if (urlMatch) return urlMatch[1];
+
+    if (/^[A-Za-z0-9_-]{20,}$/.test(text)) return text;
+    return "";
+}
+
+function updateSheetsOperationUi() {
+    const input = document.getElementById("existingSheetUrlInput");
+    const title = document.getElementById("sheetsCreateTitle");
+    const btn = document.getElementById("createGoogleSheetBtn");
+    const note = document.getElementById("existingSheetModeNote");
+    if (!input || !title || !btn || !note) return;
+
+    const raw = normalizeString(input.value);
+    const id = extractSpreadsheetIdFromUrl(raw);
+
+    if (!raw) {
+        title.textContent = "Google Sheetsレポートを新規作成";
+        btn.textContent = "新規レポートを作成";
+        note.className = "mt-2 text-[11px] leading-relaxed text-gray-500";
+        note.textContent = "空欄なら新規作成します。URLを入力した場合は、集計設定・KWマスタ・企業表示名・画像マスタ等を引き継いで更新します。";
+        return;
+    }
+
+    if (!id) {
+        title.textContent = "既存レポートを更新";
+        btn.textContent = "既存レポートを更新";
+        note.className = "mt-2 text-[11px] leading-relaxed text-red-600";
+        note.textContent = "Google SheetsのURLを正しく貼り付けてください。";
+        return;
+    }
+
+    title.textContent = "既存Google Sheetsレポートを更新";
+    btn.textContent = "この既存レポートを更新";
+    note.className = "mt-2 text-[11px] leading-relaxed text-green-700";
+    note.textContent =
+        "更新モード：90～96番台の分析元データを差し替えます。集計設定・仕事名KW・企業表示名・画像マスタ・カスタム分析設定は維持します。";
 }
 
 function refreshSheetsCreateSummary() {
@@ -1961,14 +2046,22 @@ function hideSheetsCreateSuccess() {
 
 function showCreatedSheetSuccess(result) {
     const wrap = document.getElementById("sheetsCreateSuccess");
+    const title = document.getElementById("sheetsCreateSuccessTitle");
     const meta = document.getElementById("sheetsCreateSuccessMeta");
     const link = document.getElementById("openCreatedSheetLink");
     if (!wrap || !meta || !link) return;
 
+    const isUpdate = normalizeString(result.operationMode).toUpperCase() === "UPDATE";
+    if (title) {
+        title.textContent = isUpdate
+            ? "既存Google Sheetsレポートを更新しました"
+            : "Google Sheetsレポートを作成しました";
+    }
+
     link.href = result.spreadsheetUrl;
     meta.textContent =
         `${result.fileName || "有効応募分析"} ／ API処理 ${Number(result.elapsedMs || 0).toLocaleString()} ms` +
-        (result.reused ? " ／ 再送のため既存ファイルを再利用" : "");
+        (result.reused ? " ／ 同じrequestIdの処理結果を再利用" : "");
 
     wrap.classList.remove("hidden");
 
@@ -2008,8 +2101,16 @@ function mapSheetsApiError(data) {
             "Googleスプレッドシートへの書き込み中にエラーが発生しました。",
         BUSY:
             "Google側の処理が混み合っているか、実行時間上限に達しました。同じボタンから再試行できます。",
+        TARGET_INVALID:
+            "更新先のGoogle Sheetsを確認できませんでした。出力フォルダ内の有効応募分析レポートを指定してください。",
+        TARGET_OUTSIDE_OUTPUT_FOLDER:
+            "更新先が指定の出力フォルダ内にありません。更新できるのは有効応募分析の出力フォルダ内のSheetだけです。",
+        TARGET_WORKBOOK_INVALID:
+            "更新先は有効応募分析レポートとして確認できませんでした。別のSheet URLを指定してください。",
+        REQUEST_TARGET_MISMATCH:
+            "再試行中のrequestIdと更新先Sheetが一致しません。いったん再集計するか、更新先URLを確認してください。",
         INTERNAL_ERROR:
-            "API GAS内部でエラーが発生しました。生成先フォルダに[生成失敗]ファイルがないか確認してください。"
+            "API GAS内部でエラーが発生しました。同じボタンから再試行できます。"
     };
 
     return messages[code] || rawMessage || `APIエラーが発生しました${code ? ` (${code})` : ""}。`;
@@ -2186,15 +2287,18 @@ async function postSheetsPayloadUntilReady(
 async function createGoogleSpreadsheet() {
     if (globalSheetsCreateInFlight || globalFinalData.length === 0) return;
 
-    const apiUrl = getStoredSheetsApiUrl();
+    const apiUrl = SHEETS_API_URL;
     const accessKey = getStoredSheetsAccessKey();
+    const targetInput = document.getElementById("existingSheetUrlInput");
+    const targetSpreadsheetUrl = normalizeString(targetInput?.value);
+    const targetSpreadsheetId = extractSpreadsheetIdFromUrl(targetSpreadsheetUrl);
 
-    if (!apiUrl) {
+    if (targetSpreadsheetUrl && !targetSpreadsheetId) {
         setSheetsCreateStatus(
-            "Google Sheets連携先URLが未設定です。詳細設定へ入力してください。",
+            "既存レポートのGoogle Sheets URLが正しくありません。",
             "warning"
         );
-        openSheetsSettingsAndFocus("url");
+        targetInput?.focus();
         return;
     }
 
@@ -2203,7 +2307,7 @@ async function createGoogleSpreadsheet() {
             "Google Sheets連携のアクセスキーが未設定です。詳細設定へ入力してください。",
             "warning"
         );
-        openSheetsSettingsAndFocus("key");
+        openSheetsSettingsAndFocus();
         return;
     }
 
@@ -2219,8 +2323,26 @@ async function createGoogleSpreadsheet() {
         if (!proceed) return;
     }
 
+    if (targetSpreadsheetId) {
+        const proceedUpdate = window.confirm(
+            "既存の有効応募分析レポートを更新します。\n\n" +
+            "更新するもの：\n" +
+            "・90～96番台の分析元データ\n" +
+            "・分析結果タブ\n\n" +
+            "維持するもの：\n" +
+            "・集計設定\n" +
+            "・仕事名KWマスタ\n" +
+            "・企業ID表示名\n" +
+            "・画像マスタの既存URL／メモ\n" +
+            "・カスタム分析設定\n" +
+            "・ファイル名／共有権限／GAS\n\n" +
+            "この既存レポートを更新しますか？"
+        );
+        if (!proceedUpdate) return;
+    }
+
     const btn = document.getElementById("createGoogleSheetBtn");
-    const originalText = btn?.textContent.trim() || "Googleスプレッドシートを作成";
+    const originalText = btn?.textContent.trim() || (targetSpreadsheetId ? "この既存レポートを更新" : "新規レポートを作成");
 
     globalSheetsCreateInFlight = true;
     if (btn) {
@@ -2264,19 +2386,30 @@ async function createGoogleSpreadsheet() {
 
         const payload = buildSheetsPayloadV3(
             accessKey,
-            globalPendingSheetsRequestId
+            globalPendingSheetsRequestId,
+            targetSpreadsheetUrl
         );
+
+        try {
+            if (targetSpreadsheetUrl) {
+                localStorage.setItem(SHEETS_UPDATE_TARGET_STORAGE_KEY, targetSpreadsheetUrl);
+            } else {
+                localStorage.removeItem(SHEETS_UPDATE_TARGET_STORAGE_KEY);
+            }
+        } catch (_) {}
         const payloadBytes = measureJsonBytes(payload);
 
         setSheetsCreateStatus(
             `API GASへ送信しています。\n` +
             `送信サイズ: ${formatByteSize(payloadBytes)}\n` +
             `requestId: ${globalPendingSheetsRequestId}\n\n` +
-            `テンプレート複製・データ書き込みの完了を待っています...`,
+            (targetSpreadsheetId
+                ? `既存レポートのデータ更新・再集計の完了を待っています...`
+                : `テンプレート複製・データ書き込みの完了を待っています...`),
             "info"
         );
 
-        if (btn) btn.textContent = "Google Sheets作成中...";
+        if (btn) btn.textContent = targetSpreadsheetId ? "既存レポート更新中..." : "Google Sheets作成中...";
 
 
 const data =
@@ -2305,9 +2438,11 @@ if (!data.spreadsheetUrl) {
 }
 
         setSheetsCreateStatus(
-            data.reused
-                ? "再送されたrequestIdを検出したため、既に作成済みのスプレッドシートを返しました。"
-                : "Googleスプレッドシートの作成が完了しました。",
+            normalizeString(data.operationMode).toUpperCase() === "UPDATE"
+                ? "既存Google Sheetsレポートの更新が完了しました。"
+                : (data.reused
+                    ? "同じrequestIdの作成済みレポートを返しました。"
+                    : "Google Sheetsレポートの作成が完了しました。"),
             "success"
         );
 
@@ -2358,6 +2493,14 @@ if (saveSheetsConnectionBtn) {
         "click",
         saveSheetsConnectionSettings
     );
+}
+
+const existingSheetUrlInput =
+    document.getElementById("existingSheetUrlInput");
+if (existingSheetUrlInput) {
+    existingSheetUrlInput.value = getStoredUpdateTargetUrl();
+    existingSheetUrlInput.addEventListener("input", updateSheetsOperationUi);
+    updateSheetsOperationUi();
 }
 
 const createGoogleSheetBtn =
