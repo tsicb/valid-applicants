@@ -655,7 +655,9 @@
         const SHEETS_API_URL_STORAGE_KEY = "validApplicationAnalysis.sheetsApiUrl";
         const SHEETS_ACCESS_KEY_STORAGE_KEY = "validApplicationAnalysis.sheetsAccessKey";
         const SHEETS_LAST_RESULT_STORAGE_KEY = "validApplicationAnalysis.lastSheetResult";
-        const SHEETS_POST_TIMEOUT_MS = 330000; // 5分30秒。GAS側6分上限より少し短くする。
+        const SHEETS_POST_TIMEOUT_MS = 330000; // 5分30秒。1回のAPI処理待機上限。
+const SHEETS_MAX_AUTO_RESUME_MS = 900000; // 自動再開は最大15分。
+const SHEETS_MAX_AUTO_RESUME_ROUNDS = 12;
         let globalPendingSheetsRequestId = "";
         let globalSheetsCreateInFlight = false;
 
@@ -1305,7 +1307,7 @@
 // Pages側のJOIN結果を求人参照IDへ変換するため、
 // API GAS側で元CSVのJOINロジックを再現する必要はない。
 const SHEETS_SCHEMA_VERSION = "3.0";
-const SHEETS_APP_VERSION = "2026.08.29-pages-payload-v3-normalized";
+const SHEETS_APP_VERSION = "2026.08.30-pages-resumable-v1.5";
 
 const APPLICATION_DATA_HEADERS = [
     "レコードID",
@@ -2087,6 +2089,136 @@ async function postSheetsPayload(apiUrl, payload) {
     }
 }
 
+
+function sleepMs(ms) {
+    return new Promise(resolve =>
+        setTimeout(
+            resolve,
+            Math.max(0, ms || 0)
+        )
+    );
+}
+
+function sheetsStageLabel(data) {
+    const stage =
+        normalizeString(data?.stage);
+
+    const status =
+        normalizeString(data?.status);
+
+    const labels = {
+        CREATED: "テンプレート複製完了",
+        OPENED: "スプレッドシートを開きました",
+        DATA_WRITTEN: "データ書き込み完了",
+        REPORT_DONE: "レポート生成完了",
+        READY: "作成完了"
+    };
+
+    if (labels[stage]) {
+        return labels[stage];
+    }
+
+    if (status === "PROCESSING") {
+        return "Google Sheets処理中";
+    }
+
+    return "Google Sheets作成処理中";
+}
+
+async function postSheetsPayloadUntilReady(
+    apiUrl,
+    payload,
+    onStatus
+) {
+    const startedAt = Date.now();
+    let rounds = 0;
+    let timeoutCount = 0;
+
+    while (true) {
+        rounds++;
+
+        if (
+            rounds > SHEETS_MAX_AUTO_RESUME_ROUNDS ||
+            Date.now() - startedAt > SHEETS_MAX_AUTO_RESUME_MS
+        ) {
+            const err = new Error(
+                "自動再開の上限時間を超えました。同じボタンから再試行できます。"
+            );
+            err.code = "AUTO_RESUME_LIMIT";
+            throw err;
+        }
+
+        let result;
+
+        try {
+            result = await postSheetsPayload(
+                apiUrl,
+                payload
+            );
+        } catch (error) {
+            if (error?.name !== "AbortError") {
+                throw error;
+            }
+
+            timeoutCount++;
+
+            if (onStatus) {
+                onStatus(
+                    "GAS側の応答待機上限に達しました。\n" +
+                    "同じrequestIdの処理状態を自動で再確認します...\n" +
+                    `requestId: ${payload.requestId}`
+                );
+            }
+
+            await sleepMs(
+                timeoutCount === 1
+                    ? 15000
+                    : 30000
+            );
+
+            continue;
+        }
+
+        const data = result.data;
+
+        if (!data?.ok) {
+            const err = new Error(
+                mapSheetsApiError(data)
+            );
+            err.apiData = data;
+            err.code = normalizeString(
+                data?.code
+            );
+            throw err;
+        }
+
+        if (!data.pending) {
+            return data;
+        }
+
+        const retryAfterMs =
+            Math.max(
+                1000,
+                Number(
+                    data.retryAfterMs
+                ) || 5000
+            );
+
+        if (onStatus) {
+            onStatus(
+                `${sheetsStageLabel(data)}。\n` +
+                `${normalizeString(data.message)}\n` +
+                `約${Math.ceil(retryAfterMs / 1000)}秒後に同じファイルから自動再開します。\n` +
+                `requestId: ${payload.requestId}`
+            );
+        }
+
+        await sleepMs(
+            retryAfterMs
+        );
+    }
+}
+
 async function createGoogleSpreadsheet() {
     if (globalSheetsCreateInFlight || globalFinalData.length === 0) return;
 
@@ -2182,26 +2314,31 @@ async function createGoogleSpreadsheet() {
 
         if (btn) btn.textContent = "Google Sheets作成中...";
 
-        const result = await postSheetsPayload(apiUrl, payload);
-        const data = result.data;
 
-        if (!data?.ok) {
-            const message = mapSheetsApiError(data);
-            setSheetsCreateStatus(message, "error");
-
-            if (normalizeString(data?.code) === "AUTH_INVALID") {
-                openSheetsSettingsAndFocus("key");
-            }
-            return;
-        }
-
-        if (!data.spreadsheetUrl) {
+const data =
+    await postSheetsPayloadUntilReady(
+        apiUrl,
+        payload,
+        message => {
             setSheetsCreateStatus(
-                "API処理は成功しましたが、Spreadsheet URLが返りませんでした。",
-                "error"
+                message,
+                "info"
             );
-            return;
+
+            if (btn) {
+                btn.textContent =
+                    "Google Sheets作成中...";
+            }
         }
+    );
+
+if (!data.spreadsheetUrl) {
+    setSheetsCreateStatus(
+        "API処理は成功しましたが、Spreadsheet URLが返りませんでした。",
+        "error"
+    );
+    return;
+}
 
         setSheetsCreateStatus(
             data.reused
@@ -2215,16 +2352,33 @@ async function createGoogleSpreadsheet() {
         // 成功後は次回クリックを「新しいSheet作成」とするためrequestIdを破棄。
         globalPendingSheetsRequestId = "";
 
-    } catch (error) {
-        const isAbort = error?.name === "AbortError";
-        const message = isAbort
-            ? "ブラウザ側の待機時間を超えました。GAS側では作成が続いている可能性があります。\n同じボタンから再試行すると、同じrequestIdで既存ファイルを確認します。"
-            : "Google Sheets作成中に通信エラーが発生しました。\n" +
-              (error?.message || String(error)) +
-              "\n\n同じボタンから再試行できます。requestIdは維持されています。";
 
-        setSheetsCreateStatus(message, "error");
-    } finally {
+} catch (error) {
+    const apiData =
+        error?.apiData;
+
+    const code =
+        normalizeString(
+            apiData?.code ||
+            error?.code
+        );
+
+    const message =
+        "Google Sheets作成処理を完了できませんでした.\n" +
+        (error?.message || String(error)) +
+        "\n\n同じボタンから再試行できます。requestIdと生成済みファイルは維持されます。";
+
+    setSheetsCreateStatus(
+        message,
+        "error"
+    );
+
+    if (code === "AUTH_INVALID") {
+        openSheetsSettingsAndFocus(
+            "key"
+        );
+    }
+} finally {
         globalSheetsCreateInFlight = false;
         if (btn) {
             btn.disabled = false;
