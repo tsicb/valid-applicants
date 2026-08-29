@@ -97,7 +97,7 @@
 
     <!-- 設定モーダル -->
     <div id="settingsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm transition-opacity">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 relative transform transition-all border border-gray-100">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 relative transform transition-all border border-gray-100 max-h-[90vh] overflow-y-auto">
             <button id="closeSettingsBtn" class="absolute top-5 right-5 text-gray-400 hover:text-gray-700 bg-gray-50 hover:bg-gray-200 rounded-full p-2 focus:outline-none transition-colors">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
@@ -116,6 +116,57 @@
                     </select>
                 </div>
                 
+                <hr class="border-gray-200">
+
+                <!-- Google Sheets連携 -->
+                <div class="pt-1">
+                    <label class="block font-bold text-sm text-gray-700 mb-3">Google Sheets連携</label>
+
+                    <div class="space-y-3">
+                        <div>
+                            <label for="sheetsApiUrlInput" class="block text-xs font-bold text-gray-600 mb-1">
+                                連携先 Web App URL
+                            </label>
+                            <input
+                                id="sheetsApiUrlInput"
+                                type="url"
+                                inputmode="url"
+                                autocomplete="off"
+                                placeholder="https://script.google.com/macros/s/.../exec"
+                                class="border border-gray-300 p-2.5 rounded-lg w-full text-xs bg-gray-50 focus:bg-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all"
+                            >
+                        </div>
+
+                        <div>
+                            <label for="sheetsAccessKeyInput" class="block text-xs font-bold text-gray-600 mb-1">
+                                アクセスキー
+                            </label>
+                            <input
+                                id="sheetsAccessKeyInput"
+                                type="password"
+                                autocomplete="off"
+                                placeholder="API GASに設定したACCESS_KEY"
+                                class="border border-gray-300 p-2.5 rounded-lg w-full text-xs bg-gray-50 focus:bg-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all"
+                            >
+                        </div>
+
+                        <button
+                            id="saveSheetsConnectionBtn"
+                            type="button"
+                            class="w-full bg-indigo-50 text-indigo-700 border border-indigo-200 px-4 py-2.5 rounded-xl font-bold hover:bg-indigo-100 transition-all text-sm"
+                        >
+                            このブラウザに連携設定を保存
+                        </button>
+
+                        <div id="sheetsConnectionSettingsStatus" class="hidden text-xs rounded-lg p-2.5"></div>
+
+                        <p class="text-[11px] leading-relaxed text-gray-500">
+                            URLとアクセスキーはこのブラウザのlocalStorageに保存します。
+                            生成するスプレッドシートにはアクセスキーを保存しません。
+                        </p>
+                    </div>
+                </div>
+
                 <hr class="border-gray-200">
 
                 <!-- CSVダウンロード -->
@@ -248,6 +299,44 @@
                         <span class="relative z-10 tracking-wide mr-2">分析ダッシュボードへ進む</span>
                         <svg class="w-6 h-6 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
                     </button>
+
+                    <!-- Google Sheets生成 -->
+                    <div id="sheetsCreateArea" class="w-full max-w-2xl rounded-2xl border border-green-200 bg-green-50/70 p-5">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                            <div class="min-w-0">
+                                <div class="font-extrabold text-green-900 text-base">Googleスプレッドシートを作成</div>
+                                <div id="sheetsCreateSummary" class="text-xs text-green-800 mt-1.5 leading-relaxed">
+                                    集計結果をGoogle Sheets版レポートのデータとして送信します。
+                                </div>
+                                <div class="text-[11px] text-green-700/80 mt-2">
+                                    氏名・メールアドレス全文・詳細な居住住所・重複行明細は送信しません。
+                                </div>
+                            </div>
+                            <button
+                                id="createGoogleSheetBtn"
+                                type="button"
+                                class="shrink-0 px-5 py-3 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-extrabold shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Googleスプレッドシートを作成
+                            </button>
+                        </div>
+
+                        <div id="sheetsCreateStatus" class="hidden mt-4 text-xs rounded-xl bg-white border border-green-100 p-3 text-gray-700 whitespace-pre-wrap"></div>
+
+                        <div id="sheetsCreateSuccess" class="hidden mt-4 rounded-xl border border-emerald-200 bg-white p-4">
+                            <div class="font-bold text-emerald-800 text-sm">スプレッドシートを作成しました</div>
+                            <div id="sheetsCreateSuccessMeta" class="text-xs text-gray-600 mt-1"></div>
+                            <a
+                                id="openCreatedSheetLink"
+                                href="#"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="inline-flex items-center mt-3 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold transition"
+                            >
+                                作成したGoogleスプレッドシートを開く
+                            </a>
+                        </div>
+                    </div>
 
                     <!-- Phase 1: Google Sheets生成へ組み込む前のTOP画像URL解決確認 -->
                     <div id="imageLookupTestArea" class="hidden w-full max-w-2xl rounded-2xl border border-sky-200 bg-sky-50/70 p-5">
@@ -562,6 +651,14 @@
         let globalJoinCount = 0;
         let globalEtlExecutedAt = "";
 
+        // Google Sheets API連携状態
+        const SHEETS_API_URL_STORAGE_KEY = "validApplicationAnalysis.sheetsApiUrl";
+        const SHEETS_ACCESS_KEY_STORAGE_KEY = "validApplicationAnalysis.sheetsAccessKey";
+        const SHEETS_LAST_RESULT_STORAGE_KEY = "validApplicationAnalysis.lastSheetResult";
+        const SHEETS_POST_TIMEOUT_MS = 330000; // 5分30秒。GAS側6分上限より少し短くする。
+        let globalPendingSheetsRequestId = "";
+        let globalSheetsCreateInFlight = false;
+
         let filteredData = [];
         let trendFilteredData = []; // ★追加: トレンド用のフィルタリング済みデータをグローバルに保持
         let globalDuplicateCount = 0; 
@@ -630,6 +727,7 @@
         openSettingsBtn.addEventListener('click', () => {
             // データが存在しない場合はダウンロードボタンを無効にする
             document.getElementById('downloadBtn').disabled = globalFinalData.length === 0;
+            loadSheetsConnectionSettingsIntoModal();
             settingsModal.classList.remove('hidden');
         });
 
@@ -643,6 +741,9 @@
                 settingsModal.classList.add('hidden');
             }
         });
+
+        // 保存済みのGoogle Sheets連携設定を初期表示へ反映
+        loadSheetsConnectionSettingsIntoModal();
 
         // Chart.js プラグインの登録
         Chart.register(ChartDataLabels);
@@ -1623,7 +1724,7 @@ function getApplicationDateRange() {
     };
 }
 
-function buildSheetsPayloadV3(accessKey = "") {
+function buildSheetsPayloadV3(accessKey = "", requestId = "") {
     const dateRange = getApplicationDateRange();
     const ageMinEl = document.getElementById("filterAgeMin");
     const ageMaxEl = document.getElementById("filterAgeMax");
@@ -1637,7 +1738,7 @@ function buildSheetsPayloadV3(accessKey = "") {
 
     return {
         schemaVersion: SHEETS_SCHEMA_VERSION,
-        requestId: makeRequestId(),
+        requestId: requestId || makeRequestId(),
         accessKey,
         requestedAt: new Date().toISOString(),
         appVersion: SHEETS_APP_VERSION,
@@ -1763,6 +1864,390 @@ if (sheetsPayloadTestBtn) {
     sheetsPayloadTestBtn.addEventListener(
         "click",
         runSheetsPayloadVerification
+    );
+}
+
+
+// ==========================================
+// Google Sheets API POST連携
+// ==========================================
+function getStoredSheetsApiUrl() {
+    try {
+        return normalizeString(localStorage.getItem(SHEETS_API_URL_STORAGE_KEY));
+    } catch (_) {
+        return "";
+    }
+}
+
+function getStoredSheetsAccessKey() {
+    try {
+        return normalizeString(localStorage.getItem(SHEETS_ACCESS_KEY_STORAGE_KEY));
+    } catch (_) {
+        return "";
+    }
+}
+
+function saveSheetsConnectionSettings() {
+    const urlInput = document.getElementById("sheetsApiUrlInput");
+    const keyInput = document.getElementById("sheetsAccessKeyInput");
+    const statusEl = document.getElementById("sheetsConnectionSettingsStatus");
+
+    const apiUrl = normalizeString(urlInput?.value);
+    const accessKey = normalizeString(keyInput?.value);
+
+    if (!apiUrl || !/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec(?:\?.*)?$/.test(apiUrl)) {
+        if (statusEl) {
+            statusEl.className = "text-xs rounded-lg p-2.5 bg-red-50 text-red-700 border border-red-200";
+            statusEl.textContent = "Web Appの /exec URLを入力してください。";
+            statusEl.classList.remove("hidden");
+        }
+        urlInput?.focus();
+        return false;
+    }
+
+    if (!accessKey) {
+        if (statusEl) {
+            statusEl.className = "text-xs rounded-lg p-2.5 bg-red-50 text-red-700 border border-red-200";
+            statusEl.textContent = "アクセスキーを入力してください。";
+            statusEl.classList.remove("hidden");
+        }
+        keyInput?.focus();
+        return false;
+    }
+
+    try {
+        localStorage.setItem(SHEETS_API_URL_STORAGE_KEY, apiUrl);
+        localStorage.setItem(SHEETS_ACCESS_KEY_STORAGE_KEY, accessKey);
+    } catch (error) {
+        if (statusEl) {
+            statusEl.className = "text-xs rounded-lg p-2.5 bg-red-50 text-red-700 border border-red-200";
+            statusEl.textContent = "ブラウザへの保存に失敗しました。";
+            statusEl.classList.remove("hidden");
+        }
+        return false;
+    }
+
+    if (statusEl) {
+        statusEl.className = "text-xs rounded-lg p-2.5 bg-emerald-50 text-emerald-700 border border-emerald-200";
+        statusEl.textContent = "Google Sheets連携設定を保存しました。";
+        statusEl.classList.remove("hidden");
+    }
+    return true;
+}
+
+function loadSheetsConnectionSettingsIntoModal() {
+    const urlInput = document.getElementById("sheetsApiUrlInput");
+    const keyInput = document.getElementById("sheetsAccessKeyInput");
+
+    if (urlInput) urlInput.value = getStoredSheetsApiUrl();
+    if (keyInput) keyInput.value = getStoredSheetsAccessKey();
+}
+
+function openSheetsSettingsAndFocus(field = "url") {
+    loadSheetsConnectionSettingsIntoModal();
+    settingsModal.classList.remove("hidden");
+
+    setTimeout(() => {
+        const target = field === "key"
+            ? document.getElementById("sheetsAccessKeyInput")
+            : document.getElementById("sheetsApiUrlInput");
+        target?.focus();
+    }, 50);
+}
+
+function refreshSheetsCreateSummary() {
+    const el = document.getElementById("sheetsCreateSummary");
+    if (!el) return;
+
+    const appCount = globalFinalData.length;
+    const jobFileCount = globalInputFileInfo.filter(info => info.type === "求人CSV").length;
+    const joinCount = globalJoinCount;
+    const joinRate = appCount > 0 ? (joinCount / appCount) * 100 : 0;
+
+    if (jobFileCount === 0) {
+        el.textContent =
+            `分析対象 ${appCount.toLocaleString()}応募 ／ 求人CSVなし（応募データのみで作成）`;
+    } else {
+        el.textContent =
+            `分析対象 ${appCount.toLocaleString()}応募 ／ 求人突合 ${joinCount.toLocaleString()}応募（${joinRate.toFixed(1)}%） ／ 求人CSV ${jobFileCount}ファイル`;
+    }
+}
+
+function setSheetsCreateStatus(message, type = "info") {
+    const el = document.getElementById("sheetsCreateStatus");
+    if (!el) return;
+
+    const classes = {
+        info: "hidden mt-4 text-xs rounded-xl bg-white border border-green-100 p-3 text-gray-700 whitespace-pre-wrap",
+        warning: "hidden mt-4 text-xs rounded-xl bg-amber-50 border border-amber-200 p-3 text-amber-800 whitespace-pre-wrap",
+        error: "hidden mt-4 text-xs rounded-xl bg-red-50 border border-red-200 p-3 text-red-700 whitespace-pre-wrap",
+        success: "hidden mt-4 text-xs rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-emerald-700 whitespace-pre-wrap"
+    };
+
+    el.className = classes[type] || classes.info;
+    el.textContent = message;
+    el.classList.remove("hidden");
+}
+
+function hideSheetsCreateSuccess() {
+    document.getElementById("sheetsCreateSuccess")?.classList.add("hidden");
+}
+
+function showCreatedSheetSuccess(result) {
+    const wrap = document.getElementById("sheetsCreateSuccess");
+    const meta = document.getElementById("sheetsCreateSuccessMeta");
+    const link = document.getElementById("openCreatedSheetLink");
+    if (!wrap || !meta || !link) return;
+
+    link.href = result.spreadsheetUrl;
+    meta.textContent =
+        `${result.fileName || "有効応募分析"} ／ API処理 ${Number(result.elapsedMs || 0).toLocaleString()} ms` +
+        (result.reused ? " ／ 再送のため既存ファイルを再利用" : "");
+
+    wrap.classList.remove("hidden");
+
+    try {
+        localStorage.setItem(
+            SHEETS_LAST_RESULT_STORAGE_KEY,
+            JSON.stringify({
+                spreadsheetUrl: result.spreadsheetUrl,
+                spreadsheetId: result.spreadsheetId || "",
+                fileName: result.fileName || "",
+                createdAt: new Date().toISOString()
+            })
+        );
+    } catch (_) {}
+}
+
+function mapSheetsApiError(data) {
+    const code = normalizeString(data?.code);
+    const rawMessage = normalizeString(data?.message);
+
+    const messages = {
+        AUTH_INVALID:
+            "アクセスキーが正しくありません。右上の詳細設定からGoogle Sheets連携のアクセスキーを確認してください。",
+        SCHEMA_MISMATCH:
+            "Pages側とAPI GAS側のデータ仕様が一致していません。API GASのSCHEMA_VERSIONが3.0か確認してください。",
+        NO_APPLICATION_DATA:
+            "応募データがありません。先にデータ集計を実行してください。",
+        INVALID_PAYLOAD:
+            "Google Sheetsへ送るデータの形式に問題があります。",
+        INVALID_DATASET:
+            "送信データセットの形式に問題があります。",
+        PAYLOAD_TOO_LARGE:
+            "送信データがAPI側の上限を超えています。",
+        CONFIG_ERROR:
+            "API GAS側の設定が不足しています。Script Propertiesを確認してください。",
+        WRITE_ERROR:
+            "Googleスプレッドシートへの書き込み中にエラーが発生しました。",
+        BUSY:
+            "Google側の処理が混み合っているか、実行時間上限に達しました。同じボタンから再試行できます。",
+        INTERNAL_ERROR:
+            "API GAS内部でエラーが発生しました。生成先フォルダに[生成失敗]ファイルがないか確認してください。"
+    };
+
+    return messages[code] || rawMessage || `APIエラーが発生しました${code ? ` (${code})` : ""}。`;
+}
+
+async function postSheetsPayload(apiUrl, payload) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), SHEETS_POST_TIMEOUT_MS);
+
+    try {
+        const response = await fetch(apiUrl, {
+            method: "POST",
+            mode: "cors",
+            credentials: "omit",
+            headers: {
+                "Content-Type": "text/plain;charset=UTF-8"
+            },
+            body: JSON.stringify(payload),
+            signal: controller.signal
+        });
+
+        const responseText = await response.text();
+
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        } catch (_) {
+            throw new Error(
+                `API応答をJSONとして解析できませんでした。HTTP ${response.status}\n` +
+                responseText.slice(0, 500)
+            );
+        }
+
+        return {
+            httpOk: response.ok,
+            status: response.status,
+            data
+        };
+    } finally {
+        clearTimeout(timeoutId);
+    }
+}
+
+async function createGoogleSpreadsheet() {
+    if (globalSheetsCreateInFlight || globalFinalData.length === 0) return;
+
+    const apiUrl = getStoredSheetsApiUrl();
+    const accessKey = getStoredSheetsAccessKey();
+
+    if (!apiUrl) {
+        setSheetsCreateStatus(
+            "Google Sheets連携先URLが未設定です。詳細設定へ入力してください。",
+            "warning"
+        );
+        openSheetsSettingsAndFocus("url");
+        return;
+    }
+
+    if (!accessKey) {
+        setSheetsCreateStatus(
+            "Google Sheets連携のアクセスキーが未設定です。詳細設定へ入力してください。",
+            "warning"
+        );
+        openSheetsSettingsAndFocus("key");
+        return;
+    }
+
+    const jobFileCount =
+        globalInputFileInfo.filter(info => info.type === "求人CSV").length;
+
+    if (jobFileCount > 0 && globalJoinCount === 0) {
+        const proceed = window.confirm(
+            "求人CSVは読み込まれていますが、応募データとの求人突合が0件です。\n\n" +
+            "このまま「応募データのみ」のGoogleスプレッドシートを作成しますか？\n\n" +
+            "［OK］このまま作成\n［キャンセル］求人CSVを見直す"
+        );
+        if (!proceed) return;
+    }
+
+    const btn = document.getElementById("createGoogleSheetBtn");
+    const originalText = btn?.textContent.trim() || "Googleスプレッドシートを作成";
+
+    globalSheetsCreateInFlight = true;
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = "作成準備中...";
+    }
+
+    hideSheetsCreateSuccess();
+
+    try {
+        const planSummary = getImageLookupPlanSummary();
+
+        if (
+            planSummary.analysisTargetCount > 0 &&
+            globalImageMasterInitial.length !== planSummary.analysisTargetCount
+        ) {
+            setSheetsCreateStatus(
+                `TOP画像URLを確認しています。\n公開中求人から取得可能: ${planSummary.resolvableCount.toLocaleString()}種類`,
+                "info"
+            );
+
+            if (btn) btn.textContent = "画像URL確認中...";
+
+            await resolveImageMasterInitial((done, total) => {
+                setSheetsCreateStatus(
+                    `TOP画像URLを確認しています。\n${done.toLocaleString()} / ${total.toLocaleString()} 種類 完了`,
+                    "info"
+                );
+            });
+        }
+
+        if (!globalPendingSheetsRequestId) {
+            globalPendingSheetsRequestId = makeRequestId();
+        }
+
+        if (btn) btn.textContent = "送信データ準備中...";
+        setSheetsCreateStatus(
+            "Google Sheets送信用データを準備しています...",
+            "info"
+        );
+
+        const payload = buildSheetsPayloadV3(
+            accessKey,
+            globalPendingSheetsRequestId
+        );
+        const payloadBytes = measureJsonBytes(payload);
+
+        setSheetsCreateStatus(
+            `API GASへ送信しています。\n` +
+            `送信サイズ: ${formatByteSize(payloadBytes)}\n` +
+            `requestId: ${globalPendingSheetsRequestId}\n\n` +
+            `テンプレート複製・データ書き込みの完了を待っています...`,
+            "info"
+        );
+
+        if (btn) btn.textContent = "Google Sheets作成中...";
+
+        const result = await postSheetsPayload(apiUrl, payload);
+        const data = result.data;
+
+        if (!data?.ok) {
+            const message = mapSheetsApiError(data);
+            setSheetsCreateStatus(message, "error");
+
+            if (normalizeString(data?.code) === "AUTH_INVALID") {
+                openSheetsSettingsAndFocus("key");
+            }
+            return;
+        }
+
+        if (!data.spreadsheetUrl) {
+            setSheetsCreateStatus(
+                "API処理は成功しましたが、Spreadsheet URLが返りませんでした。",
+                "error"
+            );
+            return;
+        }
+
+        setSheetsCreateStatus(
+            data.reused
+                ? "再送されたrequestIdを検出したため、既に作成済みのスプレッドシートを返しました。"
+                : "Googleスプレッドシートの作成が完了しました。",
+            "success"
+        );
+
+        showCreatedSheetSuccess(data);
+
+        // 成功後は次回クリックを「新しいSheet作成」とするためrequestIdを破棄。
+        globalPendingSheetsRequestId = "";
+
+    } catch (error) {
+        const isAbort = error?.name === "AbortError";
+        const message = isAbort
+            ? "ブラウザ側の待機時間を超えました。GAS側では作成が続いている可能性があります。\n同じボタンから再試行すると、同じrequestIdで既存ファイルを確認します。"
+            : "Google Sheets作成中に通信エラーが発生しました。\n" +
+              (error?.message || String(error)) +
+              "\n\n同じボタンから再試行できます。requestIdは維持されています。";
+
+        setSheetsCreateStatus(message, "error");
+    } finally {
+        globalSheetsCreateInFlight = false;
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
+    }
+}
+
+const saveSheetsConnectionBtn =
+    document.getElementById("saveSheetsConnectionBtn");
+if (saveSheetsConnectionBtn) {
+    saveSheetsConnectionBtn.addEventListener(
+        "click",
+        saveSheetsConnectionSettings
+    );
+}
+
+const createGoogleSheetBtn =
+    document.getElementById("createGoogleSheetBtn");
+if (createGoogleSheetBtn) {
+    createGoogleSheetBtn.addEventListener(
+        "click",
+        createGoogleSpreadsheet
     );
 }
 
@@ -2361,6 +2846,11 @@ if (sheetsPayloadTestBtn) {
                 msgEl.className = "mt-6 text-center text-sm font-bold text-green-700 bg-green-50 p-5 rounded-xl border border-green-200 block shadow-inner";
 
                 document.getElementById('resultArea').classList.remove('hidden');
+
+                // 新しいETLスナップショットになったので、前回の未送信requestIdは破棄する。
+                globalPendingSheetsRequestId = "";
+                hideSheetsCreateSuccess();
+                refreshSheetsCreateSummary();
                 refreshImageLookupTestArea(filesB.length > 0);
 
                 // データの最新日からデフォルトの「ビフォーvsアフター」基準日を設定する
