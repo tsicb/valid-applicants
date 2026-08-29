@@ -120,7 +120,7 @@
 
                 <!-- Google Sheets連携 -->
                 <div class="pt-1">
-                    <label class="block font-bold text-sm text-gray-700 mb-3">Google Sheets連携</label>
+                    <label class="block font-bold text-sm text-gray-700 mb-3">Google Sheets連携設定</label>
 
                     <div class="space-y-3">
                         <div>
@@ -177,16 +177,6 @@
                         CSVをダウンロード
                     </button>
                     <p class="text-xs text-gray-500 mt-3 flex items-center"><svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> データ集計を実行後にダウンロード可能になります。</p>
-                </div>
-
-                <hr class="border-gray-200">
-
-                <!-- 関連リンク -->
-                <div class="text-center pb-2">
-                    <a href="https://docs.google.com/spreadsheets/d/16IJTBXU6p6emrAbJMqnW3ZHl_KpEybTR8IACfS1ZSto/" target="_blank" rel="noopener noreferrer" class="text-sm font-bold text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center transition-colors">
-                        🌻有効応募分析（スプレッドシート版）
-                        <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-                    </a>
                 </div>
             </div>
         </div>
@@ -304,9 +294,9 @@
                     <div id="sheetsCreateArea" class="w-full max-w-2xl rounded-2xl border border-green-200 bg-green-50/70 p-5">
                         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                             <div class="min-w-0">
-                                <div class="font-extrabold text-green-900 text-base">Googleスプレッドシートを作成</div>
+                                <div class="font-extrabold text-green-900 text-base">Google Sheetsレポートを作成</div>
                                 <div id="sheetsCreateSummary" class="text-xs text-green-800 mt-1.5 leading-relaxed">
-                                    集計結果をGoogle Sheets版レポートのデータとして送信します。
+                                    今回の集計結果から、共有・再集計できるGoogle Sheets版レポートを作成します。
                                 </div>
                                 <div class="text-[11px] text-green-700/80 mt-2">
                                     氏名・メールアドレス全文・詳細な居住住所・重複行明細は送信しません。
@@ -317,7 +307,7 @@
                                 type="button"
                                 class="shrink-0 px-5 py-3 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-extrabold shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                Googleスプレッドシートを作成
+                                Google Sheetsレポートを作成
                             </button>
                         </div>
 
@@ -338,33 +328,7 @@
                         </div>
                     </div>
 
-                    <!-- Phase 1: Google Sheets生成へ組み込む前のTOP画像URL解決確認 -->
-                    <div id="imageLookupTestArea" class="hidden w-full max-w-2xl rounded-2xl border border-sky-200 bg-sky-50/70 p-5">
-                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                            <div>
-                                <div class="font-extrabold text-sky-900 text-sm">開発確認：TOP画像URL自動取得（公開中求人のみ）</div>
-                                <div id="imageLookupTargetText" class="text-xs text-sky-700 mt-1">対象画像を確認中...</div>
-                            </div>
-                            <button id="imageLookupTestBtn" class="shrink-0 px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-sm font-bold shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed">
-                                画像URL取得をテスト
-                            </button>
-                        </div>
-                        <div id="imageLookupTestStatus" class="hidden mt-4 text-xs rounded-xl bg-white border border-sky-100 p-3 text-gray-700 whitespace-pre-wrap"></div>
-                    </div>
 
-                    <!-- Phase 2: API GAS接続前の正規化payload v3確認 -->
-                    <div id="sheetsPayloadTestArea" class="w-full max-w-2xl rounded-2xl border border-violet-200 bg-violet-50/70 p-5">
-                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                            <div>
-                                <div class="font-extrabold text-violet-900 text-sm">開発確認：Google Sheets送信データ v3（正規化）</div>
-                                <div class="text-xs text-violet-700 mt-1">応募データと求人データを分離した送信構造と、データセット別容量を確認します。</div>
-                            </div>
-                            <button id="sheetsPayloadTestBtn" class="shrink-0 px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed">
-                                送信データを確認
-                            </button>
-                        </div>
-                        <div id="sheetsPayloadTestStatus" class="hidden mt-4 text-xs rounded-xl bg-white border border-violet-100 p-3 text-gray-700 whitespace-pre-wrap"></div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -1307,7 +1271,7 @@ const SHEETS_MAX_AUTO_RESUME_ROUNDS = 12;
 // Pages側のJOIN結果を求人参照IDへ変換するため、
 // API GAS側で元CSVのJOINロジックを再現する必要はない。
 const SHEETS_SCHEMA_VERSION = "3.0";
-const SHEETS_APP_VERSION = "2026.08.30-pages-resumable-v1.5";
+const SHEETS_APP_VERSION = "2026.08.30-production-candidate-v1";
 
 const APPLICATION_DATA_HEADERS = [
     "レコードID",
@@ -2249,7 +2213,7 @@ async function createGoogleSpreadsheet() {
     if (jobFileCount > 0 && globalJoinCount === 0) {
         const proceed = window.confirm(
             "求人CSVは読み込まれていますが、応募データとの求人突合が0件です。\n\n" +
-            "このまま「応募データのみ」のGoogleスプレッドシートを作成しますか？\n\n" +
+            "このまま「応募データのみ」のGoogle Sheetsレポートを作成しますか？\n\n" +
             "［OK］このまま作成\n［キャンセル］求人CSVを見直す"
         );
         if (!proceed) return;
